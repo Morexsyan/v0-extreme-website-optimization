@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   description:
     "自由の奴隷",
   keywords: "quantum computing, AI, machine learning, web development, blockchain, cybersecurity",
-  authors: [{ name: "Syan" }],
+  authors: [{ name: "syan" }],
   viewport: "width=device-width, initial-scale=1",
   other: {
     // 優化 GPU 性能
@@ -49,7 +49,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-TW">
-      <body className={${inter.variable} ${notoSansTC.variable} ${jetbrainsMono.variable} font-sans}>{children}</body>
+      <body className={`${inter.variable} ${notoSansTC.variable} ${jetbrainsMono.variable} font-sans`}>{children}</body>
     </html>
   )
 }
