@@ -556,14 +556,14 @@ function Terminal({ commands }: { commands: Array<{ prompt: string; output: stri
           <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-yellow-500"></div>
           <div className="w-2 h-2 md:w-3 md:h-3 rounded-full bg-green-500"></div>
         </div>
-        <span className="ml-auto text-green-400 text-xs">syan@quantum:~$</span>
+        <span className="ml-auto text-green-400 text-xs">syan:~$</span>
       </div>
 
       <div className="space-y-2">
         {commands.slice(0, currentCommand + 1).map((command, index) => (
           <div key={index}>
             <div className="text-green-400">
-              <span className="text-green-300">syan@quantum:~$</span> {command.prompt}
+              <span className="text-green-300">syan:~$</span> {command.prompt}
             </div>
             <div className="text-green-200 ml-4 break-words">
               {index === currentCommand
@@ -938,10 +938,10 @@ function MainContent() {
 
           <div className="flex flex-wrap justify-center gap-4 md:gap-6">
             {[
-              { icon: "📧", label: "Email", href: "mailto:syan@quantum.dev" },
-              { icon: "🐙", label: "GitHub", href: "https://github.com/syan-quantum" },
-              { icon: "💼", label: "LinkedIn", href: "https://linkedin.com/in/syan-quantum" },
-              { icon: "🐦", label: "Twitter", href: "https://twitter.com/syan_quantum" },
+              { icon: "📧", label: "Email", href: "mailto:morex.rick@gmail.com" },
+              { icon: "🐙", label: "GitHub", href: "https://github.com/Morexsyan" },
+              { icon: "💼", label: "discord", href: "https://discord.gg/c8nMcwqq" },
+              { icon: "▶️", label: "???", href: "https://youtu.be/dQw4w9WgXcQ?si=NA7T3ghlW_o3Lseg" },
             ].map((contact, index) => (
               <motion.a
                 key={contact.label}
