@@ -1,8 +1,6 @@
 "use client"
 
-import React from "react"
-
-import type { ReactNode } from "react"
+import type React from "react"
 
 import { useEffect, useRef, useState } from "react"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
@@ -30,7 +28,7 @@ function QuantumParticles() {
     if (!meshRef.current) return
 
     // 降低更新頻率，每兩幀更新一次
-    if (Math.floor(state.clock.elapsedTime * 60) % 2 !== 0) return
+    if (state.clock.elapsedTime % 2 === 0) return
 
     const time = state.clock.getElapsedTime()
     const dummy = new THREE.Object3D()
@@ -148,84 +146,79 @@ function NeuralNetwork() {
 }
 
 // WebGL 錯誤處理組件
-function WebGLErrorBoundary({ children }: { children: ReactNode }) {
+function WebGLErrorBoundary({ children }: { children: React.ReactNode }) {
   const [hasError, setHasError] = useState(false)
   const [isWebGLSupported, setIsWebGLSupported] = useState(true)
-  const [canvasKey, setCanvasKey] = useState(0)
 
   useEffect(() => {
     // 檢查 WebGL 支持
-    const checkWebGLSupport = () => {
-      try {
-        // 創建一個臨時 canvas 來測試 WebGL 支持
-        const testCanvas = document.createElement("canvas")
-        testCanvas.width = 1
-        testCanvas.height = 1
+    try {
+      const canvas = document.createElement("canvas")
+      const gl =
+        canvas.getContext("webgl", {
+          powerPreference: "low-power",
+          failIfMajorPerformanceCaveat: false,
+          antialias: false,
+          depth: true,
+          stencil: false,
+        }) || canvas.getContext("experimental-webgl")
 
-        const gl =
-          testCanvas.getContext("webgl2") ||
-          testCanvas.getContext("webgl") ||
-          testCanvas.getContext("experimental-webgl")
-
-        if (!gl) {
-          console.warn("WebGL not supported")
-          setIsWebGLSupported(false)
-          return false
-        }
-
-        // 測試基本 WebGL 功能
-        const renderer = gl.getParameter(gl.RENDERER)
-        const vendor = gl.getParameter(gl.VENDOR)
-        console.log("WebGL Renderer:", renderer)
-        console.log("WebGL Vendor:", vendor)
-
-        // 清理測試 canvas
-        testCanvas.remove()
-        return true
-      } catch (e) {
-        console.error("WebGL initialization error:", e)
+      if (!gl) {
         setIsWebGLSupported(false)
-        return false
+        return
       }
-    }
 
-    const isSupported = checkWebGLSupport()
+      // 監聽 WebGL 上下文丟失事件
+      const handleContextLost = (event: Event) => {
+        event.preventDefault()
+        console.warn("WebGL context lost, attempting to recover...")
+        setHasError(true)
 
-    if (isSupported) {
-      // 監聽頁面可見性變化
-      const handleVisibilityChange = () => {
-        if (document.hidden) {
-          console.log("Page hidden, preparing for context loss...")
-        } else {
-          console.log("Page visible, checking WebGL context...")
-          // 強制重新創建 Canvas
-          setCanvasKey((prev) => prev + 1)
+        // 嘗試恢復
+        setTimeout(() => {
+          console.log("Attempting to restore WebGL context...")
+          setHasError(false)
+        }, 1500)
+      }
+
+      const handleContextRestored = () => {
+        console.log("WebGL context restored")
+        setHasError(false)
+      }
+
+      canvas.addEventListener("webglcontextlost", handleContextLost)
+      canvas.addEventListener("webglcontextrestored", handleContextRestored)
+
+      // 定期檢查 WebGL 狀態
+      const intervalId = setInterval(() => {
+        if (typeof document !== "undefined") {
+          const canvases = document.querySelectorAll("canvas")
+          canvases.forEach((canvas) => {
+            const context = canvas.getContext("webgl") || canvas.getContext("experimental-webgl")
+            if (!context || context.isContextLost()) {
+              console.log("WebGL context check: context is lost, attempting to restore...")
+              // 觸發重新渲染
+              if (canvas.parentNode) {
+                const parent = canvas.parentNode
+                const nextSibling = canvas.nextSibling
+                parent.removeChild(canvas)
+                parent.insertBefore(canvas, nextSibling)
+              }
+            }
+          })
         }
-      }
-
-      document.addEventListener("visibilitychange", handleVisibilityChange)
+      }, 10000) // 每 10 秒檢查一次
 
       return () => {
-        document.removeEventListener("visibilitychange", handleVisibilityChange)
+        canvas.removeEventListener("webglcontextlost", handleContextLost)
+        canvas.removeEventListener("webglcontextrestored", handleContextRestored)
+        clearInterval(intervalId)
       }
+    } catch (e) {
+      console.error("WebGL initialization error:", e)
+      setIsWebGLSupported(false)
     }
   }, [])
-
-  const handleContextLost = () => {
-    console.warn("WebGL context lost, attempting recovery...")
-    setHasError(true)
-
-    // 延遲恢復，給瀏覽器時間清理
-    setTimeout(() => {
-      setCanvasKey((prev) => prev + 1)
-      setHasError(false)
-    }, 2000)
-  }
-
-  const handleContextRestored = () => {
-    console.log("WebGL context restored")
-    setHasError(false)
-  }
 
   if (!isWebGLSupported || hasError) {
     return (
@@ -254,30 +247,13 @@ function WebGLErrorBoundary({ children }: { children: ReactNode }) {
     )
   }
 
-  return (
-    <div key={canvasKey}>
-      {React.cloneElement(children as React.ReactElement, {
-        onContextLost: handleContextLost,
-        onContextRestored: handleContextRestored,
-        canvasKey,
-      })}
-    </div>
-  )
+  return <>{children}</>
 }
 
 // 主要 3D 場景組件 - 優化版本
-function Scene3D({
-  onContextLost,
-  onContextRestored,
-  canvasKey,
-}: {
-  onContextLost?: () => void
-  onContextRestored?: () => void
-  canvasKey?: number
-}) {
+function Scene3D() {
   const [isLowPerformance, setIsLowPerformance] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
     setIsMounted(true)
@@ -302,86 +278,79 @@ function Scene3D({
   }
 
   return (
-    <Canvas
-      key={`canvas-${canvasKey || 0}`}
-      ref={canvasRef}
-      camera={{ position: [0, 0, 12], fov: 75 }}
-      style={{ position: "fixed", top: 0, left: 0, zIndex: -1 }}
-      gl={{
-        antialias: !isLowPerformance,
-        alpha: true,
-        powerPreference: "default",
-        failIfMajorPerformanceCaveat: false,
-        preserveDrawingBuffer: false,
-        premultipliedAlpha: true,
-        stencil: false,
-        depth: true,
-      }}
-      dpr={isLowPerformance ? 1 : typeof window !== "undefined" ? Math.min(window.devicePixelRatio, 2) : 1}
-      performance={{ min: 0.5 }}
-      onCreated={({ gl, scene, camera }) => {
-        console.log("Canvas created successfully")
+    <WebGLErrorBoundary>
+      <Canvas
+        camera={{ position: [0, 0, 12], fov: 75 }}
+        style={{ position: "fixed", top: 0, left: 0, zIndex: -1 }}
+        gl={{
+          antialias: !isLowPerformance,
+          alpha: true,
+          powerPreference: "high-performance",
+          failIfMajorPerformanceCaveat: false,
+        }}
+        dpr={isLowPerformance ? 1 : typeof window !== "undefined" ? Math.min(window.devicePixelRatio, 2) : 1}
+        performance={{ min: 0.5 }}
+        onCreated={({ gl }) => {
+          // 設置 WebGL 上下文丟失處理
+          const handleContextLost = (event: Event) => {
+            event.preventDefault()
+            console.warn("WebGL context lost, attempting to recover...")
 
-        // 設置 WebGL 上下文丟失處理
-        const handleContextLost = (event: Event) => {
-          event.preventDefault()
-          console.warn("WebGL context lost in Canvas")
-          onContextLost?.()
-        }
+            // 嘗試釋放資源
+            if (typeof window !== "undefined") {
+              // 清除任何可能的 GPU 密集型任務
+              window.setTimeout(() => {
+                console.log("Attempting to restore WebGL context...")
+                // 觸發重新渲染
+                const canvas = gl.domElement
+                if (canvas.parentNode) {
+                  const parent = canvas.parentNode
+                  const nextSibling = canvas.nextSibling
+                  parent.removeChild(canvas)
+                  parent.insertBefore(canvas, nextSibling)
+                }
+              }, 500)
+            }
+          }
 
-        const handleContextRestored = () => {
-          console.log("WebGL context restored in Canvas")
-          onContextRestored?.()
-        }
+          const handleContextRestored = () => {
+            console.log("WebGL context restored successfully")
+          }
 
-        // 添加事件監聽器
-        gl.domElement.addEventListener("webglcontextlost", handleContextLost, false)
-        gl.domElement.addEventListener("webglcontextrestored", handleContextRestored, false)
+          gl.domElement.addEventListener("webglcontextlost", handleContextLost)
+          gl.domElement.addEventListener("webglcontextrestored", handleContextRestored)
 
-        // 設置更保守的 WebGL 參數
-        gl.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
-        gl.setClearColor(0x000000, 1)
+          // 設置更保守的 WebGL 參數
+          gl.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+          gl.setClearColor(0x000000, 1)
 
-        // 優化渲染設置
-        gl.shadowMap.enabled = false
-        gl.shadowMap.type = THREE.PCFSoftShadowMap
+          // 減少 WebGL 內存使用
+          gl.compile(gl.getScene(), gl.getCamera())
+        }}
+      >
+        <Suspense fallback={null}>
+          <Environment preset="night" />
+          <ambientLight intensity={0.1} />
+          <pointLight position={[8, 8, 8]} intensity={0.8} color="#00ff88" />
+          <pointLight position={[-8, -8, -8]} intensity={0.3} color="#0088ff" />
 
-        // 編譯場景以減少首次渲染延遲
-        try {
-          gl.compile(scene, camera)
-        } catch (error) {
-          console.warn("Scene compilation failed:", error)
-        }
+          {!isLowPerformance && <QuantumParticles />}
+          {!isLowPerformance && <NeuralNetwork />}
 
-        // 清理函數
-        return () => {
-          gl.domElement.removeEventListener("webglcontextlost", handleContextLost)
-          gl.domElement.removeEventListener("webglcontextrestored", handleContextRestored)
-        }
-      }}
-    >
-      <Suspense fallback={null}>
-        <Environment preset="night" />
-        <ambientLight intensity={0.1} />
-        <pointLight position={[8, 8, 8]} intensity={0.8} color="#00ff88" />
-        <pointLight position={[-8, -8, -8]} intensity={0.3} color="#0088ff" />
+          <FloatingText text="SYAN" position={[0, 2, 0]} />
+          <FloatingText text="..." position={[0, 0.5, 0]} />
 
-        {!isLowPerformance && <QuantumParticles />}
-        {!isLowPerformance && <NeuralNetwork />}
-
-        <FloatingText text="SYAN" position={[0, 2, 0]} />
-        <FloatingText text="..." position={[0, 0.5, 0]} />
-
-        <OrbitControls
-          enableZoom={false}
-          enablePan={false}
-          autoRotate
-          autoRotateSpeed={0.3}
-          enableDamping
-          dampingFactor={0.05}
-        />
-      </Suspense>
-    </Canvas>
+          <OrbitControls
+            enableZoom={false}
+            enablePan={false}
+            autoRotate
+            autoRotateSpeed={0.3}
+            enableDamping
+            dampingFactor={0.05}
+          />
+        </Suspense>
+      </Canvas>
+    </WebGLErrorBoundary>
   )
 }
 
@@ -440,7 +409,7 @@ function AdvancedLoader({ onComplete }: { onComplete: () => void }) {
           animate={{ opacity: [0.5, 1, 0.5] }}
           transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY }}
         >
-          初始化系統...
+          初始化量子系統...
         </motion.div>
       </div>
     </motion.div>
@@ -462,7 +431,7 @@ function Navigation() {
     { id: "about", label: "關於", icon: "👨‍💻", route: "/about" },
     { id: "skills", label: "技能", icon: "🧠", route: "#skills" },
     { id: "projects", label: "專案", icon: "🚀", route: "/projects" },
-    { id: "writeups", label: "WriteUps", icon: "📝", route: "/writeups" },
+    { id: "writeups", label: "WriteUps", icon: "📝", route: "/writeups" }, // 確保這裡是 writeups (複數)
     { id: "contact", label: "聯繫", icon: "📡", route: "/contact" },
   ]
 
@@ -813,19 +782,23 @@ function MainContent() {
   const projects = [
     {
       title: "discord bot ai自主開發自身新功能",
-      description: "減少開發discord bot重複無意義的行為",
+      description:
+        "減少開發discord bot重複無意義的行為",
       technologies: ["ai", "python", "discord.py"],
     },
     {
       title: "ios密碼漏洞發現&利用",
-      description: "透過研究漏洞深入了解ios系統",
+      description:
+        "透過研究漏洞深入了解ios系統",
       technologies: ["ios"],
     },
     {
       title: "phonk音樂利用算法生成",
-      description: "phonk time!!!!!",
+      description:
+        "phonk time!!!!!",
       technologies: ["music", "discord.py", "python"],
     },
+  
   ]
 
   return (
@@ -997,7 +970,6 @@ export default function QuantumPortfolio() {
   // 確保所有 hooks 都在組件頂部調用
   const [showLoader, setShowLoader] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
-  const [sceneKey, setSceneKey] = useState(0)
   const { scrollYProgress } = useScroll()
   const scrollIndicatorScale = useTransform(scrollYProgress, [0, 1], [0, 1])
 
@@ -1015,18 +987,11 @@ export default function QuantumPortfolio() {
     }
   }
 
-  const handleSceneError = () => {
-    console.log("Scene error detected, recreating...")
-    setSceneKey((prev) => prev + 1)
-  }
-
   return (
     <div className="min-h-screen bg-black text-white overflow-x-hidden">
       {/* 3D 背景場景 */}
       {isMounted ? (
-        <WebGLErrorBoundary key={sceneKey}>
-          <Scene3D />
-        </WebGLErrorBoundary>
+        <Scene3D />
       ) : (
         <div className="fixed inset-0 z-0 bg-gradient-to-br from-black via-gray-900 to-black"></div>
       )}

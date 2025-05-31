@@ -203,7 +203,7 @@ From web development to cybersecurity research, from AI applications to (maybe?)
                   <div className="w-2 h-2 bg-green-400 rounded-full mt-2 flex-shrink-0"></div>
                   <div>
                     <h3 className="text-lg font-bold text-green-300">技術文章</h3>
-                    <p className="text-green-200 text-sm md:text-base">寫 100+ 篇技術文章，累計閱讀量超過 500K</p>
+                    <p className="text-green-200 text-sm md:text-base">撰寫 100+ 篇技術文章，累計閱讀量超過 500K</p>
                   </div>
                 </div>
               </div>

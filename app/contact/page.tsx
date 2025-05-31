@@ -254,7 +254,7 @@ export default function ContactPage() {
               </form>
 
               <div className="mt-6 md:mt-8 text-center">
-                <p className="text-cyan-300 text-xs md:text-sm font-mono">努力準時回訊息 ⚡</p>
+                <p className="text-cyan-300 text-xs md:text-sm font-mono">通常在 24 小時內回覆 ⚡</p>
               </div>
             </motion.div>
           </div>

@@ -28,7 +28,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Syan - Red Team Exercise & Developer",
   description:
-    "自由の奴隷",
+    "World-class full-stack developer specializing in quantum computing, AI, and cutting-edge web technologies",
   keywords: "quantum computing, AI, machine learning, web development, blockchain, cybersecurity",
   authors: [{ name: "Syan" }],
   viewport: "width=device-width, initial-scale=1",
@@ -49,7 +49,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-TW">
-      <body className={${inter.variable} ${notoSansTC.variable} ${jetbrainsMono.variable} font-sans}>{children}</body>
+      <body className={`${inter.variable} ${notoSansTC.variable} ${jetbrainsMono.variable} font-sans`}>{children}</body>
     </html>
   )
 }
