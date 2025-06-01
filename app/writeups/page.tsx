@@ -11,48 +11,32 @@ import {
   searchWriteUps,
   getFeaturedWriteUps,
   getWriteUpStats,
-  type WriteUp,
 } from "@/lib/writeups-data"
 
-// WriteUp 卡片組件
+export type WriteUp = {
+  id: string
+  title: string
+  slug: string
+  category: string
+  difficulty: "Beginner" | "Intermediate" | "Advanced" | "Expert" | "Master"
+  status: "Published" | "Draft" | "Updated" | "Featured"
+  publishedDate: string
+  lastUpdated?: string
+  description: string
+  tags: string[]
+  readTime: string
+  views: string
+  likes: string
+  author: string
+  metrics: {
+    views: string
+    likes: string
+  }
+}
+
+// WriteUp 卡片組件 - 移除虛假數據更新
 function WriteUpCard({ writeup, index }: { writeup: WriteUp; index: number }) {
   const router = useRouter()
-
-  const [metrics, setMetrics] = useState({
-    views: writeup.metrics.views,
-    likes: writeup.metrics.likes,
-    shares: writeup.metrics.shares || "0",
-    comments: writeup.metrics.comments || "0",
-  })
-
-  useEffect(() => {
-    // Simulate a view when the card is rendered
-    const currentViews = Number.parseInt(metrics.views.replace("K", "000"))
-    const newViews = currentViews + 1
-    const formattedViews = newViews >= 1000 ? `${(newViews / 1000).toFixed(1)}K` : newViews.toString()
-
-    setMetrics((prev) => ({
-      ...prev,
-      views: formattedViews,
-    }))
-
-    // Set up interval for simulating real-time updates
-    const interval = setInterval(() => {
-      setMetrics((prev) => {
-        // Randomly update likes occasionally
-        if (Math.random() > 0.7) {
-          const currentLikes = Number.parseInt(prev.likes)
-          return {
-            ...prev,
-            likes: (currentLikes + 1).toString(),
-          }
-        }
-        return prev
-      })
-    }, 30000) // Update every 30 seconds
-
-    return () => clearInterval(interval)
-  }, [])
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -97,7 +81,7 @@ function WriteUpCard({ writeup, index }: { writeup: WriteUp; index: number }) {
       onClick={handleClick}
     >
       <div className="relative bg-black/60 backdrop-blur-xl border border-orange-400/30 rounded-xl p-4 md:p-6 h-full overflow-hidden hover:border-orange-400/60 transition-all duration-300 group-hover:transform group-hover:scale-105">
-        {/* 特色標籤 */}
+        {/* 特色標籤 - 修復重複問題 */}
         {writeup.featured && writeup.status !== "Featured" && (
           <div className="absolute top-3 right-3 z-10">
             <span className="px-2 py-1 bg-yellow-500 text-black text-xs font-bold rounded-full">⭐ Featured</span>
@@ -148,7 +132,7 @@ function WriteUpCard({ writeup, index }: { writeup: WriteUp; index: number }) {
 
           {/* 作者和日期 */}
           <div className="flex items-center gap-2 mb-3 text-xs text-orange-300">
-            <span>✍️ {writeup.author.name}</span>
+            <span>✍️ {writeup.author}</span>
             <span>•</span>
             <span>📅 {writeup.publishedDate}</span>
             {writeup.lastUpdated && (
@@ -159,13 +143,6 @@ function WriteUpCard({ writeup, index }: { writeup: WriteUp; index: number }) {
             )}
           </div>
 
-          {/* 系列信息 */}
-          {writeup.series && (
-            <div className="mb-3 text-xs text-purple-300">
-              📚 {writeup.series.name} - Part {writeup.series.part}/{writeup.series.totalParts}
-            </div>
-          )}
-
           {/* 描述 */}
           <p className="text-orange-200 mb-4 leading-relaxed text-sm line-clamp-3">{writeup.description}</p>
 
@@ -173,15 +150,15 @@ function WriteUpCard({ writeup, index }: { writeup: WriteUp; index: number }) {
           <div className="flex flex-wrap gap-2 mb-4">
             {writeup.tags.slice(0, 3).map((tag) => (
               <span
-                key={tag.name}
+                key={tag}
                 className="px-2 py-1 text-white text-xs rounded border font-mono"
                 style={{
-                  backgroundColor: tag.color + "20",
-                  borderColor: tag.color + "50",
-                  color: tag.color,
+                  backgroundColor: "#f9ca2420",
+                  borderColor: "#f9ca2450",
+                  color: "#f9ca24",
                 }}
               >
-                #{tag.name}
+                #{tag}
               </span>
             ))}
             {writeup.tags.length > 3 && (
@@ -191,30 +168,13 @@ function WriteUpCard({ writeup, index }: { writeup: WriteUp; index: number }) {
             )}
           </div>
 
-          {/* 統計資訊 */}
+          {/* 統計資訊 - 使用真實數據 */}
           <div className="flex items-center justify-between text-xs text-gray-400 font-mono mb-4">
             <div className="flex items-center gap-3 md:gap-4">
-              <span>👁 {metrics.views}</span>
-              <span>❤️ {metrics.likes}</span>
-              {metrics.shares && Number.parseInt(metrics.shares) > 0 && <span>📤 {metrics.shares}</span>}
-              {metrics.comments && Number.parseInt(metrics.comments) > 0 && <span>💬 {metrics.comments}</span>}
+              <span>👁 {writeup.views}</span>
+              <span>❤️ {writeup.likes}</span>
             </div>
             <span>⏱ {writeup.readTime}</span>
-          </div>
-
-          <div className="flex justify-end mb-4">
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                setMetrics((prev) => ({
-                  ...prev,
-                  likes: (Number.parseInt(prev.likes) + 1).toString(),
-                }))
-              }}
-              className="px-2 py-1 bg-red-400/20 text-red-300 text-xs rounded-full border border-red-400/30 hover:bg-red-400 hover:text-white transition-all duration-300"
-            >
-              ❤️ 讚
-            </button>
           </div>
 
           {/* 閱讀按鈕 */}
@@ -263,7 +223,7 @@ export default function WriteUpsPage() {
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [selectedDifficulty, setSelectedDifficulty] = useState("All")
   const [sortBy, setSortBy] = useState("newest")
-  const [filteredWriteups, setFilteredWriteups] = useState<WriteUp[]>(WRITEUPS_DATABASE)
+  const [filteredWriteups, setFilteredWriteups] = useState(WRITEUPS_DATABASE)
 
   useEffect(() => {
     setIsLoaded(true)
@@ -297,12 +257,11 @@ export default function WriteUpsPage() {
         results.sort((a, b) => new Date(a.publishedDate).getTime() - new Date(b.publishedDate).getTime())
         break
       case "popular":
-        results.sort((a, b) => Number.parseInt(b.metrics.likes) - Number.parseInt(a.metrics.likes))
+        results.sort((a, b) => Number.parseInt(b.likes) - Number.parseInt(a.likes))
         break
       case "views":
         results.sort(
-          (a, b) =>
-            Number.parseFloat(b.metrics.views.replace("K", "")) - Number.parseFloat(a.metrics.views.replace("K", "")),
+          (a, b) => Number.parseFloat(b.views.replace("K", "")) - Number.parseFloat(a.views.replace("K", "")),
         )
         break
     }
@@ -507,7 +466,7 @@ export default function WriteUpsPage() {
             ))}
           </div>
 
-          {/* 無結果��示 */}
+          {/* 無結果提示 */}
           {filteredWriteups.length === 0 && (
             <motion.div
               className="text-center py-12"

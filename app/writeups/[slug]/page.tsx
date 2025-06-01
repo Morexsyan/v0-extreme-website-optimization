@@ -167,34 +167,9 @@ export default function WriteUpDetailPage() {
 
   const writeup = getWriteUpById(slug)
 
-  const [viewCount, setViewCount] = useState(writeup ? Number.parseInt(writeup.metrics.views.replace("K", "000")) : 0)
+  // 使用真實數據，不進行虛假更新
   const [likeCount, setLikeCount] = useState(writeup ? Number.parseInt(writeup.metrics.likes) : 0)
   const [hasLiked, setHasLiked] = useState(false)
-
-  useEffect(() => {
-    if (writeup) {
-      // Increment view count when page loads
-      setViewCount((prev) => prev + 1)
-
-      // Set up interval for simulating real-time updates
-      const interval = setInterval(() => {
-        // Randomly increment views
-        if (Math.random() > 0.5) {
-          setViewCount((prev) => prev + Math.floor(Math.random() * 3) + 1)
-        }
-
-        // Randomly increment likes
-        if (Math.random() > 0.8 && !hasLiked) {
-          setLikeCount((prev) => prev + 1)
-        }
-      }, 10000) // Update every 10 seconds
-
-      return () => clearInterval(interval)
-    }
-  }, [writeup, hasLiked])
-
-  // Format the view count for display
-  const formattedViews = viewCount >= 1000 ? `${(viewCount / 1000).toFixed(1)}K` : viewCount.toString()
 
   const handleLike = () => {
     if (!hasLiked) {
@@ -424,11 +399,11 @@ export default function WriteUpDetailPage() {
               {writeup.title}
             </motion.h1>
 
-            {/* 元數據 */}
+            {/* 元數據 - 使用真實數據 */}
             <div className="flex flex-wrap items-center gap-4 md:gap-6 text-orange-300 font-mono mb-4 md:mb-6 text-sm md:text-base">
               <span>📅 {writeup.date}</span>
               <span>⏱ {writeup.readTime}</span>
-              <span>👁 {formattedViews}</span>
+              <span>👁 {writeup.metrics.views}</span>
               <span>❤️ {likeCount}</span>
               {writeup.author && <span>✍️ {writeup.author}</span>}
             </div>

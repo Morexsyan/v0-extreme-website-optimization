@@ -432,7 +432,7 @@ function AdvancedLoader({ onComplete }: { onComplete: () => void }) {
   )
 }
 
-// 導航組件 - 修復路由問題
+// 導航組件 - 修復手機端顯示問題
 function Navigation() {
   const [activeSection, setActiveSection] = useState("home")
   const router = useRouter()
@@ -500,12 +500,12 @@ function Navigation() {
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.8, delay: 2 }}
     >
-      <div className="bg-black/90 backdrop-blur-xl border border-green-400/30 rounded-full px-4 py-2 md:px-6 md:py-3">
-        <div className="flex space-x-2 md:space-x-6">
+      <div className="bg-black/90 backdrop-blur-xl border border-green-400/30 rounded-full px-2 py-2 md:px-6 md:py-3">
+        <div className="flex space-x-1 md:space-x-6">
           {sections.map((section) => (
             <motion.button
               key={section.id}
-              className={`relative px-3 py-2 md:px-4 md:py-2 rounded-full text-xs md:text-sm transition-all duration-300 ${
+              className={`relative px-2 py-2 md:px-4 md:py-2 rounded-full text-xs md:text-sm transition-all duration-300 whitespace-nowrap ${
                 activeSection === section.id
                   ? "text-black bg-green-400 shadow-lg shadow-green-400/50"
                   : "text-green-400 hover:text-green-300"
@@ -514,8 +514,7 @@ function Navigation() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <span className="hidden sm:inline">{section.label}</span>
-              <span className="sm:hidden text-base">{section.icon}</span>
+              {isMobile ? <span className="text-sm">{section.icon}</span> : <span>{section.label}</span>}
               {activeSection === section.id && (
                 <motion.div
                   className="absolute inset-0 bg-green-400 rounded-full -z-10"
