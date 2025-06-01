@@ -6,7 +6,7 @@ import type { ReactNode } from "react"
 
 import { useEffect, useRef, useState } from "react"
 import { Canvas, useFrame, useThree } from "@react-three/fiber"
-import { OrbitControls, Text3D, Float, Sparkles, Environment } from "@react-three/drei"
+import { OrbitControls, Float, Sparkles, Environment } from "@react-three/drei"
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion"
 import * as THREE from "three"
 import { Suspense } from "react"
@@ -63,47 +63,18 @@ function QuantumParticles() {
 }
 
 function FloatingText({ text, position }: { text: string; position: [number, number, number] }) {
-  const [fontLoaded, setFontLoaded] = useState(false)
-
-  useEffect(() => {
-    const checkFont = async () => {
-      try {
-        await new Promise((resolve, reject) => {
-          const timeout = setTimeout(() => reject(new Error("Font load timeout")), 3000)
-
-          setTimeout(() => {
-            clearTimeout(timeout)
-            resolve(true)
-          }, 1000)
-        })
-        setFontLoaded(true)
-      } catch (error) {
-        console.warn("Font loading failed, using fallback")
-        setFontLoaded(false)
-      }
-    }
-
-    checkFont()
-  }, [])
-
-  if (!fontLoaded) {
-    // 降級方案：使用簡單的 3D 幾何體
-    return (
-      <Float speed={1.5} rotationIntensity={0.3} floatIntensity={0.3}>
-        <mesh position={position}>
-          <boxGeometry args={[text.length * 0.5, 0.5, 0.2]} />
-          <meshStandardMaterial color="#00ff88" emissive="#00ff88" emissiveIntensity={0.2} />
-        </mesh>
-      </Float>
-    )
-  }
-
+  // 直接使用降級方案，避免字體加載錯誤
   return (
     <Float speed={1.5} rotationIntensity={0.3} floatIntensity={0.3}>
-      <Text3D font="/fonts/helvetiker_regular.typeface.json" size={0.8} height={0.15} position={position} castShadow>
-        {text}
-        <meshStandardMaterial color="#00ff88" emissive="#00ff88" emissiveIntensity={0.2} />
-      </Text3D>
+      <mesh position={position}>
+        <boxGeometry args={[text.length * 0.3, 0.4, 0.1]} />
+        <meshStandardMaterial color="#00ff88" emissive="#00ff88" emissiveIntensity={0.2} transparent opacity={0.8} />
+      </mesh>
+      {/* 添加文字標籤作為備用 */}
+      <mesh position={[position[0], position[1] - 0.3, position[2]]}>
+        <planeGeometry args={[text.length * 0.2, 0.2]} />
+        <meshBasicMaterial transparent opacity={0} />
+      </mesh>
     </Float>
   )
 }
@@ -158,7 +129,6 @@ function WebGLErrorBoundary({ children }: { children: ReactNode }) {
     // 檢查 WebGL 支持
     const checkWebGLSupport = () => {
       try {
-        // 創建一個臨時 canvas 來測試 WebGL 支持
         const testCanvas = document.createElement("canvas")
         testCanvas.width = 1
         testCanvas.height = 1
@@ -173,12 +143,6 @@ function WebGLErrorBoundary({ children }: { children: ReactNode }) {
           setIsWebGLSupported(false)
           return false
         }
-
-        // 測試基本 WebGL 功能
-        const renderer = gl.getParameter(gl.RENDERER)
-        const vendor = gl.getParameter(gl.VENDOR)
-        console.log("WebGL Renderer:", renderer)
-        console.log("WebGL Vendor:", vendor)
 
         // 清理測試 canvas
         testCanvas.remove()
@@ -195,12 +159,12 @@ function WebGLErrorBoundary({ children }: { children: ReactNode }) {
     if (isSupported) {
       // 監聽頁面可見性變化
       const handleVisibilityChange = () => {
-        if (document.hidden) {
-          console.log("Page hidden, preparing for context loss...")
-        } else {
-          console.log("Page visible, checking WebGL context...")
-          // 強制重新創建 Canvas
-          setCanvasKey((prev) => prev + 1)
+        if (!document.hidden) {
+          // 頁面重新可見時，延遲重新創建 Canvas
+          setTimeout(() => {
+            setCanvasKey((prev) => prev + 1)
+            setHasError(false)
+          }, 1000)
         }
       }
 
@@ -220,7 +184,7 @@ function WebGLErrorBoundary({ children }: { children: ReactNode }) {
     setTimeout(() => {
       setCanvasKey((prev) => prev + 1)
       setHasError(false)
-    }, 2000)
+    }, 3000)
   }
 
   const handleContextRestored = () => {
@@ -310,22 +274,13 @@ function Scene3D() {
           // 設置 WebGL 上下文丟失處理
           const handleContextLost = (event: Event) => {
             event.preventDefault()
-            console.warn("WebGL context lost, attempting to recover...")
+            console.warn("WebGL context lost")
 
-            // 嘗試釋放資源
-            if (typeof window !== "undefined") {
-              // 清除任何可能的 GPU 密集型任務
-              window.setTimeout(() => {
-                console.log("Attempting to restore WebGL context...")
-                // 觸發重新渲染
-                const canvas = gl.domElement
-                if (canvas.parentNode) {
-                  const parent = canvas.parentNode
-                  const nextSibling = canvas.nextSibling
-                  parent.removeChild(canvas)
-                  parent.insertBefore(canvas, nextSibling)
-                }
-              }, 500)
+            // 清理資源
+            try {
+              gl.dispose()
+            } catch (e) {
+              console.warn("Error disposing WebGL context:", e)
             }
           }
 
@@ -333,17 +288,26 @@ function Scene3D() {
             console.log("WebGL context restored successfully")
           }
 
-          gl.domElement.addEventListener("webglcontextlost", handleContextLost)
-          gl.domElement.addEventListener("webglcontextrestored", handleContextRestored)
+          // 添加事件監聽器
+          const canvas = gl.domElement
+          canvas.addEventListener("webglcontextlost", handleContextLost, false)
+          canvas.addEventListener("webglcontextrestored", handleContextRestored, false)
 
           // 設置更保守的 WebGL 參數
-          if (typeof window !== "undefined") {
-            gl.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+          try {
+            if (typeof window !== "undefined") {
+              gl.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+            }
+            gl.setClearColor(0x000000, 1)
+          } catch (e) {
+            console.warn("Error setting WebGL parameters:", e)
           }
-          gl.setClearColor(0x000000, 1)
 
-          // 移除無效的 compile 調用
-          // gl.compile(gl.getScene(), gl.getCamera()) // 這行導致錯誤，已移除
+          // 清理函數
+          return () => {
+            canvas.removeEventListener("webglcontextlost", handleContextLost)
+            canvas.removeEventListener("webglcontextrestored", handleContextRestored)
+          }
         }}
       >
         <Suspense fallback={null}>
