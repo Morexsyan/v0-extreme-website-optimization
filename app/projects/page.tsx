@@ -357,15 +357,15 @@ export default function ProjectsPage() {
                 <div className="text-blue-300 font-mono text-sm md:text-base">開源專案</div>
               </div>
               <div className="bg-black/60 backdrop-blur-xl border border-green-400/30 rounded-xl p-4 md:p-6">
-                <div className="text-2xl md:text-3xl font-bold text-green-400 mb-2">15K+</div>
+                <div className="text-2xl md:text-3xl font-bold text-green-400 mb-2">1</div>
                 <div className="text-green-300 font-mono text-sm md:text-base">GitHub Stars</div>
               </div>
               <div className="bg-black/60 backdrop-blur-xl border border-purple-400/30 rounded-xl p-4 md:p-6">
-                <div className="text-2xl md:text-3xl font-bold text-purple-400 mb-2">50+</div>
+                <div className="text-2xl md:text-3xl font-bold text-purple-400 mb-2">2</div>
                 <div className="text-purple-300 font-mono text-sm md:text-base">貢獻者</div>
               </div>
               <div className="bg-black/60 backdrop-blur-xl border border-yellow-400/30 rounded-xl p-4 md:p-6">
-                <div className="text-2xl md:text-3xl font-bold text-yellow-400 mb-2">100K+</div>
+                <div className="text-2xl md:text-3xl font-bold text-yellow-400 mb-2">1</div>
                 <div className="text-yellow-300 font-mono text-sm md:text-base">下載量</div>
               </div>
             </div>
