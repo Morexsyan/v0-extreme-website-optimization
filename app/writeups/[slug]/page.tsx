@@ -129,6 +129,10 @@ const getWriteUpById = (id: string): WriteUp | null => {
       views: "12.5K",
       likes: "892",
       author: "Syan",
+      metrics: {
+        views: "12.5K",
+        likes: "892",
+      },
     },
     {
       id: "quantum-cryptography-implementation",
@@ -142,6 +146,10 @@ const getWriteUpById = (id: string): WriteUp | null => {
       views: "8.7K",
       likes: "654",
       author: "Syan",
+      metrics: {
+        views: "8.7K",
+        likes: "654",
+      },
     },
     // 添加其他文章...
   ]
@@ -157,11 +165,51 @@ export default function WriteUpDetailPage() {
   const [isLiked, setIsLiked] = useState(false)
   const [isBookmarked, setIsBookmarked] = useState(false)
 
+  const writeup = getWriteUpById(slug)
+
+  const [viewCount, setViewCount] = useState(writeup ? Number.parseInt(writeup.metrics.views.replace("K", "000")) : 0)
+  const [likeCount, setLikeCount] = useState(writeup ? Number.parseInt(writeup.metrics.likes) : 0)
+  const [hasLiked, setHasLiked] = useState(false)
+
+  useEffect(() => {
+    if (writeup) {
+      // Increment view count when page loads
+      setViewCount((prev) => prev + 1)
+
+      // Set up interval for simulating real-time updates
+      const interval = setInterval(() => {
+        // Randomly increment views
+        if (Math.random() > 0.5) {
+          setViewCount((prev) => prev + Math.floor(Math.random() * 3) + 1)
+        }
+
+        // Randomly increment likes
+        if (Math.random() > 0.8 && !hasLiked) {
+          setLikeCount((prev) => prev + 1)
+        }
+      }, 10000) // Update every 10 seconds
+
+      return () => clearInterval(interval)
+    }
+  }, [writeup, hasLiked])
+
+  // Format the view count for display
+  const formattedViews = viewCount >= 1000 ? `${(viewCount / 1000).toFixed(1)}K` : viewCount.toString()
+
+  const handleLike = () => {
+    if (!hasLiked) {
+      setLikeCount((prev) => prev + 1)
+    } else {
+      setLikeCount((prev) => Math.max(0, prev - 1))
+    }
+    setHasLiked(!hasLiked)
+    setIsLiked(!isLiked)
+  }
+
   useEffect(() => {
     setIsLoaded(true)
   }, [])
 
-  const writeup = getWriteUpById(slug)
   const content = writeupContents[slug] || "內容正在準備中..."
 
   if (!writeup) {
@@ -278,7 +326,7 @@ export default function WriteUpDetailPage() {
                   ? "bg-red-500 text-white"
                   : "bg-black/60 border border-red-400/50 text-red-400 hover:bg-red-400 hover:text-black"
               }`}
-              onClick={() => setIsLiked(!isLiked)}
+              onClick={handleLike}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >
@@ -380,8 +428,8 @@ export default function WriteUpDetailPage() {
             <div className="flex flex-wrap items-center gap-4 md:gap-6 text-orange-300 font-mono mb-4 md:mb-6 text-sm md:text-base">
               <span>📅 {writeup.date}</span>
               <span>⏱ {writeup.readTime}</span>
-              <span>👁 {writeup.views}</span>
-              <span>❤️ {writeup.likes}</span>
+              <span>👁 {formattedViews}</span>
+              <span>❤️ {likeCount}</span>
               {writeup.author && <span>✍️ {writeup.author}</span>}
             </div>
 
@@ -462,11 +510,11 @@ export default function WriteUpDetailPage() {
                       ? "bg-red-500 text-white"
                       : "bg-gradient-to-r from-red-400 to-pink-400 text-black hover:from-red-300 hover:to-pink-300"
                   }`}
-                  onClick={() => setIsLiked(!isLiked)}
+                  onClick={handleLike}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  ❤️ {isLiked ? "已讚" : "讚"}
+                  ❤️ {isLiked ? `已讚 (${likeCount})` : `讚 (${likeCount})`}
                 </motion.button>
 
                 <motion.button

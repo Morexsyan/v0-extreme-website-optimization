@@ -425,7 +425,7 @@ function AdvancedLoader({ onComplete }: { onComplete: () => void }) {
           animate={{ opacity: [0.5, 1, 0.5] }}
           transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY }}
         >
-          初始化量子系統...
+          初始化系統...
         </motion.div>
       </div>
     </motion.div>
@@ -515,7 +515,7 @@ function Navigation() {
               whileTap={{ scale: 0.95 }}
             >
               <span className="hidden sm:inline">{section.label}</span>
-              <span className="sm:hidden text-lg">{section.icon}</span>
+              <span className="sm:hidden text-base">{section.icon}</span>
               {activeSection === section.id && (
                 <motion.div
                   className="absolute inset-0 bg-green-400 rounded-full -z-10"
