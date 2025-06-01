@@ -4,7 +4,7 @@ import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import type { WriteUp } from "../page"
+import { getWriteUpBySlug } from "@/lib/writeups-data"
 
 // WriteUp 詳細內容數據庫
 const writeupContents: { [key: string]: string } = {
@@ -114,49 +114,6 @@ class BB84Protocol:
   // 可以繼續添加其他文章的內容...
 }
 
-// 模擬從數據庫獲取 WriteUp 數據
-const getWriteUpById = (id: string): WriteUp | null => {
-  const writeups: WriteUp[] = [
-    {
-      id: "advanced-sql-injection",
-      title: "Advanced SQL Injection in Modern Web Applications",
-      category: "Web Security",
-      difficulty: "Expert",
-      date: "2024-01-15",
-      description: "深入分析現代 Web 應用程式中的高級 SQL 注入技術，包括 WAF 繞過、盲注技巧和自動化工具開發。",
-      tags: ["SQL Injection", "WAF Bypass", "Web Security", "Penetration Testing"],
-      readTime: "15 min",
-      views: "12.5K",
-      likes: "892",
-      author: "Syan",
-      metrics: {
-        views: "12.5K",
-        likes: "892",
-      },
-    },
-    {
-      id: "quantum-cryptography-implementation",
-      title: "Quantum Cryptography Implementation",
-      category: "Cryptography",
-      difficulty: "Master",
-      date: "2024-01-10",
-      description: "實現量子密碼學協議，探討量子金鑰分發和後量子密碼學的實際應用。",
-      tags: ["Quantum", "Cryptography", "QKD", "Post-Quantum"],
-      readTime: "25 min",
-      views: "8.7K",
-      likes: "654",
-      author: "Syan",
-      metrics: {
-        views: "8.7K",
-        likes: "654",
-      },
-    },
-    // 添加其他文章...
-  ]
-
-  return writeups.find((w) => w.id === id) || null
-}
-
 export default function WriteUpDetailPage() {
   const router = useRouter()
   const params = useParams()
@@ -165,7 +122,7 @@ export default function WriteUpDetailPage() {
   const [isLiked, setIsLiked] = useState(false)
   const [isBookmarked, setIsBookmarked] = useState(false)
 
-  const writeup = getWriteUpById(slug)
+  const writeup = getWriteUpBySlug(slug)
 
   // 使用真實數據，不進行虛假更新
   const [likeCount, setLikeCount] = useState(writeup ? Number.parseInt(writeup.metrics.likes) : 0)
@@ -399,23 +356,28 @@ export default function WriteUpDetailPage() {
               {writeup.title}
             </motion.h1>
 
-            {/* 元數據 - 使用真實數據 */}
+            {/* 元數據 - 修復 author 對象渲染 */}
             <div className="flex flex-wrap items-center gap-4 md:gap-6 text-orange-300 font-mono mb-4 md:mb-6 text-sm md:text-base">
-              <span>📅 {writeup.date}</span>
+              <span>📅 {writeup.publishedDate}</span>
               <span>⏱ {writeup.readTime}</span>
               <span>👁 {writeup.metrics.views}</span>
               <span>❤️ {likeCount}</span>
-              {writeup.author && <span>✍️ {writeup.author}</span>}
+              <span>✍️ {writeup.author.name}</span>
             </div>
 
             {/* 標籤 */}
             <div className="flex flex-wrap gap-2">
-              {writeup.tags.map((tag: string) => (
+              {writeup.tags.map((tag) => (
                 <span
-                  key={tag}
-                  className="px-3 py-1 bg-gray-800/50 text-gray-300 text-sm rounded border border-gray-600/30 font-mono"
+                  key={tag.name}
+                  className="px-3 py-1 text-sm rounded border font-mono"
+                  style={{
+                    backgroundColor: tag.color + "20",
+                    borderColor: tag.color + "50",
+                    color: tag.color,
+                  }}
                 >
-                  #{tag}
+                  #{tag.name}
                 </span>
               ))}
             </div>

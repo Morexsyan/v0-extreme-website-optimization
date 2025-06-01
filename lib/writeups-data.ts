@@ -324,7 +324,6 @@ class BB84Protocol:
       totalParts: 3,
     },
   },
-  // 可以繼續添加更多 WriteUps...
 ]
 
 // 工具函數

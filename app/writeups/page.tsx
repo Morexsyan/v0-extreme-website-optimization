@@ -11,30 +11,10 @@ import {
   searchWriteUps,
   getFeaturedWriteUps,
   getWriteUpStats,
+  type WriteUp,
 } from "@/lib/writeups-data"
 
-export type WriteUp = {
-  id: string
-  title: string
-  slug: string
-  category: string
-  difficulty: "Beginner" | "Intermediate" | "Advanced" | "Expert" | "Master"
-  status: "Published" | "Draft" | "Updated" | "Featured"
-  publishedDate: string
-  lastUpdated?: string
-  description: string
-  tags: string[]
-  readTime: string
-  views: string
-  likes: string
-  author: string
-  metrics: {
-    views: string
-    likes: string
-  }
-}
-
-// WriteUp 卡片組件 - 移除虛假數據更新
+// WriteUp 卡片組件 - 修復 author 對象渲染問題
 function WriteUpCard({ writeup, index }: { writeup: WriteUp; index: number }) {
   const router = useRouter()
 
@@ -130,9 +110,9 @@ function WriteUpCard({ writeup, index }: { writeup: WriteUp; index: number }) {
             {writeup.title}
           </h2>
 
-          {/* 作者和日期 */}
+          {/* 作者和日期 - 修復 author 對象渲染 */}
           <div className="flex items-center gap-2 mb-3 text-xs text-orange-300">
-            <span>✍️ {writeup.author}</span>
+            <span>✍️ {writeup.author.name}</span>
             <span>•</span>
             <span>📅 {writeup.publishedDate}</span>
             {writeup.lastUpdated && (
@@ -143,6 +123,13 @@ function WriteUpCard({ writeup, index }: { writeup: WriteUp; index: number }) {
             )}
           </div>
 
+          {/* 系列信息 */}
+          {writeup.series && (
+            <div className="mb-3 text-xs text-purple-300">
+              📚 {writeup.series.name} - Part {writeup.series.part}/{writeup.series.totalParts}
+            </div>
+          )}
+
           {/* 描述 */}
           <p className="text-orange-200 mb-4 leading-relaxed text-sm line-clamp-3">{writeup.description}</p>
 
@@ -150,15 +137,15 @@ function WriteUpCard({ writeup, index }: { writeup: WriteUp; index: number }) {
           <div className="flex flex-wrap gap-2 mb-4">
             {writeup.tags.slice(0, 3).map((tag) => (
               <span
-                key={tag}
+                key={tag.name}
                 className="px-2 py-1 text-white text-xs rounded border font-mono"
                 style={{
-                  backgroundColor: "#f9ca2420",
-                  borderColor: "#f9ca2450",
-                  color: "#f9ca24",
+                  backgroundColor: tag.color + "20",
+                  borderColor: tag.color + "50",
+                  color: tag.color,
                 }}
               >
-                #{tag}
+                #{tag.name}
               </span>
             ))}
             {writeup.tags.length > 3 && (
@@ -171,8 +158,14 @@ function WriteUpCard({ writeup, index }: { writeup: WriteUp; index: number }) {
           {/* 統計資訊 - 使用真實數據 */}
           <div className="flex items-center justify-between text-xs text-gray-400 font-mono mb-4">
             <div className="flex items-center gap-3 md:gap-4">
-              <span>👁 {writeup.views}</span>
-              <span>❤️ {writeup.likes}</span>
+              <span>👁 {writeup.metrics.views}</span>
+              <span>❤️ {writeup.metrics.likes}</span>
+              {writeup.metrics.shares && Number.parseInt(writeup.metrics.shares) > 0 && (
+                <span>📤 {writeup.metrics.shares}</span>
+              )}
+              {writeup.metrics.comments && Number.parseInt(writeup.metrics.comments) > 0 && (
+                <span>💬 {writeup.metrics.comments}</span>
+              )}
             </div>
             <span>⏱ {writeup.readTime}</span>
           </div>
@@ -223,7 +216,7 @@ export default function WriteUpsPage() {
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [selectedDifficulty, setSelectedDifficulty] = useState("All")
   const [sortBy, setSortBy] = useState("newest")
-  const [filteredWriteups, setFilteredWriteups] = useState(WRITEUPS_DATABASE)
+  const [filteredWriteups, setFilteredWriteups] = useState<WriteUp[]>(WRITEUPS_DATABASE)
 
   useEffect(() => {
     setIsLoaded(true)
@@ -257,11 +250,12 @@ export default function WriteUpsPage() {
         results.sort((a, b) => new Date(a.publishedDate).getTime() - new Date(b.publishedDate).getTime())
         break
       case "popular":
-        results.sort((a, b) => Number.parseInt(b.likes) - Number.parseInt(a.likes))
+        results.sort((a, b) => Number.parseInt(b.metrics.likes) - Number.parseInt(a.metrics.likes))
         break
       case "views":
         results.sort(
-          (a, b) => Number.parseFloat(b.views.replace("K", "")) - Number.parseFloat(a.views.replace("K", "")),
+          (a, b) =>
+            Number.parseFloat(b.metrics.views.replace("K", "")) - Number.parseFloat(a.metrics.views.replace("K", "")),
         )
         break
     }
