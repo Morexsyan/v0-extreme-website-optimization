@@ -337,11 +337,13 @@ function Scene3D() {
           gl.domElement.addEventListener("webglcontextrestored", handleContextRestored)
 
           // 設置更保守的 WebGL 參數
-          gl.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+          if (typeof window !== "undefined") {
+            gl.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+          }
           gl.setClearColor(0x000000, 1)
 
-          // 減少 WebGL 內存使用
-          gl.compile(gl.getScene(), gl.getCamera())
+          // 移除無效的 compile 調用
+          // gl.compile(gl.getScene(), gl.getCamera()) // 這行導致錯誤，已移除
         }}
       >
         <Suspense fallback={null}>

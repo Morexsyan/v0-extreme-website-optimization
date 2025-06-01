@@ -155,17 +155,13 @@ function WriteUpCard({ writeup, index }: { writeup: WriteUp; index: number }) {
             )}
           </div>
 
-          {/* 統計資訊 - 使用真實數據 */}
+          {/* 統計資訊 - 清零所有數值 */}
           <div className="flex items-center justify-between text-xs text-gray-400 font-mono mb-4">
             <div className="flex items-center gap-3 md:gap-4">
-              <span>👁 {writeup.metrics.views}</span>
-              <span>❤️ {writeup.metrics.likes}</span>
-              {writeup.metrics.shares && Number.parseInt(writeup.metrics.shares) > 0 && (
-                <span>📤 {writeup.metrics.shares}</span>
-              )}
-              {writeup.metrics.comments && Number.parseInt(writeup.metrics.comments) > 0 && (
-                <span>💬 {writeup.metrics.comments}</span>
-              )}
+              <span>👁 0</span>
+              <span>❤️ 0</span>
+              {writeup.metrics.shares && <span>📤 0</span>}
+              {writeup.metrics.comments && <span>💬 0</span>}
             </div>
             <span>⏱ {writeup.readTime}</span>
           </div>
@@ -250,13 +246,12 @@ export default function WriteUpsPage() {
         results.sort((a, b) => new Date(a.publishedDate).getTime() - new Date(b.publishedDate).getTime())
         break
       case "popular":
-        results.sort((a, b) => Number.parseInt(b.metrics.likes) - Number.parseInt(a.metrics.likes))
+        // 由於數值已清零，這裡不再基於點讚數排序
+        results.sort((a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime())
         break
       case "views":
-        results.sort(
-          (a, b) =>
-            Number.parseFloat(b.metrics.views.replace("K", "")) - Number.parseFloat(a.metrics.views.replace("K", "")),
-        )
+        // 由於數值已清零，這裡不再基於閱讀量排序
+        results.sort((a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime())
         break
     }
 
@@ -486,7 +481,7 @@ export default function WriteUpsPage() {
             </motion.div>
           )}
 
-          {/* 統計資訊 */}
+          {/* 統計資訊 - 修復 CSS 類名錯誤 */}
           <motion.div
             className="mt-12 md:mt-16 text-center"
             initial={{ opacity: 0 }}
@@ -495,21 +490,19 @@ export default function WriteUpsPage() {
           >
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
               <div className="bg-black/60 backdrop-blur-xl border border-orange-400/30 rounded-xl p-4 md:p-6">
-                <div className="text-2xl md:text-3xl font-bold text-orange-400 mb-2">{stats.total}+</div>
+                <div className="text-2xl md:text-3xl font-bold text-orange-400 mb-2">{stats.total}</div>
                 <div className="text-orange-300 font-mono text-sm md:text-base">技術文章</div>
               </div>
               <div className="bg-black/60 backdrop-blur-xl border border-red-400/30 rounded-xl p-4 md:p-6">
-                <div className="text-2xl md:text-3xl font-bold text-red-400 mb-2">{stats.categories}+</div>
+                <div className="text-2xl md:text-3xl font-bold text-red-400 mb-2">{stats.categories}</div>
                 <div className="text-red-300 font-mono text-sm md:text-base">技術領域</div>
               </div>
               <div className="bg-black/60 backdrop-blur-xl border border-purple-400/30 rounded-xl p-4 md:p-6">
-                <div className="text-2xl md:text-3xl font-bold text-purple-400 mb-2">
-                  {Math.round(stats.totalViews / 1000)}K+
-                </div>
+                <div className="text-2xl md:text-3xl font-bold text-purple-400 mb-2">0</div>
                 <div className="text-purple-300 font-mono text-sm md:text-base">總閱讀量</div>
               </div>
               <div className="bg-black/60 backdrop-blur-xl border border-green-400/30 rounded-xl p-4 md:p-6">
-                <div className="text-2xl md:text-3xl font-bold text-green-400 mb-2">{stats.totalLikes}+</div>
+                <div className="text-2xl md:text-3xl font-bold text-green-400 mb-2">0</div>
                 <div className="text-green-300 font-mono text-sm md:text-base">總讚數</div>
               </div>
             </div>

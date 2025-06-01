@@ -110,7 +110,7 @@ export const CATEGORIES = [
 // 難度配置
 export const DIFFICULTIES = ["All", "Beginner", "Intermediate", "Advanced", "Expert", "Master"] as const
 
-// WriteUps 數據庫
+// WriteUps 數據庫 - 所有數值已清零或設為較小值
 export const WRITEUPS_DATABASE: WriteUp[] = [
   {
     id: "advanced-sql-injection-2024",
@@ -131,10 +131,10 @@ export const WRITEUPS_DATABASE: WriteUp[] = [
     ],
     readTime: "15 min",
     metrics: {
-      views: "12.5K",
-      likes: "892",
-      shares: "156",
-      comments: "43",
+      views: "0",
+      likes: "0",
+      shares: "0",
+      comments: "0",
     },
     author: {
       name: "Syan",
@@ -271,10 +271,10 @@ def test_sql_injection(url, param):
     ],
     readTime: "25 min",
     metrics: {
-      views: "8.7K",
-      likes: "654",
-      shares: "89",
-      comments: "27",
+      views: "0",
+      likes: "0",
+      shares: "0",
+      comments: "0",
     },
     author: {
       name: "Syan",
@@ -367,13 +367,7 @@ export function getWriteUpStats() {
   return {
     total: WRITEUPS_DATABASE.length,
     categories: [...new Set(WRITEUPS_DATABASE.map((w) => w.category))].length,
-    totalViews: WRITEUPS_DATABASE.reduce((sum, w) => {
-      const views = Number.parseFloat(w.metrics.views.replace("K", "")) * 1000
-      return sum + views
-    }, 0),
-    totalLikes: WRITEUPS_DATABASE.reduce((sum, w) => {
-      const likes = Number.parseInt(w.metrics.likes)
-      return sum + likes
-    }, 0),
+    totalViews: 0, // 清零
+    totalLikes: 0, // 清零
   }
 }

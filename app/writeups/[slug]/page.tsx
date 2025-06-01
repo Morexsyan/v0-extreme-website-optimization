@@ -124,8 +124,8 @@ export default function WriteUpDetailPage() {
 
   const writeup = getWriteUpBySlug(slug)
 
-  // 使用真實數據，不進行虛假更新
-  const [likeCount, setLikeCount] = useState(writeup ? Number.parseInt(writeup.metrics.likes) : 0)
+  // 初始化為0，避免數值造假嫌疑
+  const [likeCount, setLikeCount] = useState(0)
   const [hasLiked, setHasLiked] = useState(false)
 
   const handleLike = () => {
@@ -356,11 +356,11 @@ export default function WriteUpDetailPage() {
               {writeup.title}
             </motion.h1>
 
-            {/* 元數據 - 修復 author 對象渲染 */}
+            {/* 元數據 - 清零所有數值 */}
             <div className="flex flex-wrap items-center gap-4 md:gap-6 text-orange-300 font-mono mb-4 md:mb-6 text-sm md:text-base">
               <span>📅 {writeup.publishedDate}</span>
               <span>⏱ {writeup.readTime}</span>
-              <span>👁 {writeup.metrics.views}</span>
+              <span>👁 0</span>
               <span>❤️ {likeCount}</span>
               <span>✍️ {writeup.author.name}</span>
             </div>
