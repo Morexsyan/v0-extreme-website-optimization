@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { getWriteUpBySlug } from "@/lib/writeups-data"
+import { useWriteUpMetrics } from "@/hooks/use-writeup-metrics"
 
 // WriteUp 詳細內容數據庫
 const writeupContents: { [key: string]: string } = {
@@ -111,7 +112,6 @@ class BB84Protocol:
 
 量子密碼學在金融、政府和軍事領域有重要應用。
   `,
-  // 可以繼續添加其他文章的內容...
 }
 
 export default function WriteUpDetailPage() {
@@ -119,28 +119,18 @@ export default function WriteUpDetailPage() {
   const params = useParams()
   const slug = params?.slug as string
   const [isLoaded, setIsLoaded] = useState(false)
-  const [isLiked, setIsLiked] = useState(false)
   const [isBookmarked, setIsBookmarked] = useState(false)
 
   const writeup = getWriteUpBySlug(slug)
-
-  // 初始化為0，避免數值造假嫌疑
-  const [likeCount, setLikeCount] = useState(0)
-  const [hasLiked, setHasLiked] = useState(false)
-
-  const handleLike = () => {
-    if (!hasLiked) {
-      setLikeCount((prev) => prev + 1)
-    } else {
-      setLikeCount((prev) => Math.max(0, prev - 1))
-    }
-    setHasLiked(!hasLiked)
-    setIsLiked(!isLiked)
-  }
+  const { metrics, isLiked, incrementViews, toggleLike, incrementShares } = useWriteUpMetrics(writeup?.id || "")
 
   useEffect(() => {
     setIsLoaded(true)
-  }, [])
+    // 自動增加瀏覽數
+    if (writeup) {
+      incrementViews()
+    }
+  }, [writeup, incrementViews])
 
   const content = writeupContents[slug] || "內容正在準備中..."
 
@@ -201,6 +191,26 @@ export default function WriteUpDetailPage() {
     return colors[category as keyof typeof colors] || "#00ff88"
   }
 
+  const handleShare = () => {
+    incrementShares()
+
+    if (navigator.share) {
+      navigator.share({
+        title: writeup.title,
+        text: writeup.description,
+        url: window.location.href,
+      })
+    } else {
+      navigator.clipboard.writeText(window.location.href)
+      // 顯示複製成功提示
+      const toast = document.createElement("div")
+      toast.className = "fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg z-50"
+      toast.textContent = "連結已複製到剪貼板！"
+      document.body.appendChild(toast)
+      setTimeout(() => document.body.removeChild(toast), 2000)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-black text-white">
       {/* 動態背景效果 */}
@@ -258,11 +268,11 @@ export default function WriteUpDetailPage() {
                   ? "bg-red-500 text-white"
                   : "bg-black/60 border border-red-400/50 text-red-400 hover:bg-red-400 hover:text-black"
               }`}
-              onClick={handleLike}
+              onClick={toggleLike}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >
-              ❤️
+              {isLiked ? "❤️" : "🤍"}
             </motion.button>
 
             <motion.button
@@ -280,18 +290,7 @@ export default function WriteUpDetailPage() {
 
             <motion.button
               className="p-2 md:p-3 bg-black/60 border border-blue-400/50 rounded-full text-blue-400 hover:bg-blue-400 hover:text-black transition-all duration-300"
-              onClick={() => {
-                if (navigator.share) {
-                  navigator.share({
-                    title: writeup.title,
-                    text: writeup.description,
-                    url: window.location.href,
-                  })
-                } else {
-                  navigator.clipboard.writeText(window.location.href)
-                  alert("連結已複製到剪貼板！")
-                }
-              }}
+              onClick={handleShare}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >
@@ -356,12 +355,26 @@ export default function WriteUpDetailPage() {
               {writeup.title}
             </motion.h1>
 
-            {/* 元數據 - 清零所有數值 */}
+            {/* 元數據 - 使用即時數據 */}
             <div className="flex flex-wrap items-center gap-4 md:gap-6 text-orange-300 font-mono mb-4 md:mb-6 text-sm md:text-base">
               <span>📅 {writeup.publishedDate}</span>
               <span>⏱ {writeup.readTime}</span>
-              <span>👁 0</span>
-              <span>❤️ {likeCount}</span>
+              <motion.span
+                key={metrics.views}
+                initial={{ scale: 1 }}
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 0.3 }}
+              >
+                👁 {metrics.views}
+              </motion.span>
+              <motion.span
+                key={metrics.likes}
+                initial={{ scale: 1 }}
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 0.3 }}
+              >
+                ❤️ {metrics.likes}
+              </motion.span>
               <span>✍️ {writeup.author.name}</span>
             </div>
 
@@ -447,28 +460,20 @@ export default function WriteUpDetailPage() {
                       ? "bg-red-500 text-white"
                       : "bg-gradient-to-r from-red-400 to-pink-400 text-black hover:from-red-300 hover:to-pink-300"
                   }`}
-                  onClick={handleLike}
+                  onClick={toggleLike}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  ❤️ {isLiked ? `已讚 (${likeCount})` : `讚 (${likeCount})`}
+                  {isLiked ? `❤️ 已讚 (${metrics.likes})` : `🤍 讚 (${metrics.likes})`}
                 </motion.button>
 
                 <motion.button
                   className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-blue-400 to-purple-400 text-black font-mono rounded-lg hover:from-blue-300 hover:to-purple-300 transition-all duration-300"
-                  onClick={() => {
-                    if (navigator.share) {
-                      navigator.share({
-                        title: writeup.title,
-                        text: writeup.description,
-                        url: window.location.href,
-                      })
-                    }
-                  }}
+                  onClick={handleShare}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  📤 分享
+                  📤 分享 ({metrics.shares})
                 </motion.button>
               </div>
             </div>
@@ -483,7 +488,6 @@ export default function WriteUpDetailPage() {
           >
             <h2 className="text-2xl md:text-3xl font-bold text-orange-400 mb-6 md:mb-8 text-center">相關文章推薦</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* 這裡可以添加相關文章的邏輯 */}
               <motion.div
                 className="bg-black/60 backdrop-blur-xl border border-orange-400/30 rounded-xl p-6 cursor-pointer hover:border-orange-400/60 transition-all duration-300"
                 onClick={() => router.push("/writeups/quantum-cryptography-implementation")}

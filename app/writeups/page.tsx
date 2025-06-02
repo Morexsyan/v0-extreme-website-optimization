@@ -1,11 +1,12 @@
 "use client"
 
 import type React from "react"
-
+import WriteUpStateManager from "@/lib/writeup-state-manager"
 import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import PersistentHomeButton from "@/components/persistent-home-button"
+import { useWriteUpMetrics, useAllWriteUpStats } from "@/hooks/use-writeup-metrics"
 import {
   WRITEUPS_DATABASE,
   CATEGORIES,
@@ -16,10 +17,10 @@ import {
   type WriteUp,
 } from "@/lib/writeups-data"
 
-// WriteUp 卡片組件 - 修復 author 對象渲染問題
-function WriteUpCard({ writeup, index, onLike }: { writeup: WriteUp; index: number; onLike: () => void }) {
+// WriteUp 卡片組件 - 使用新的狀態管理
+function WriteUpCard({ writeup, index }: { writeup: WriteUp; index: number }) {
   const router = useRouter()
-  const [likes, setLikes] = useState(Number.parseInt(writeup.metrics.likes || "0"))
+  const { metrics, isLiked, incrementViews, toggleLike, incrementShares } = useWriteUpMetrics(writeup.id)
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -52,13 +53,34 @@ function WriteUpCard({ writeup, index, onLike }: { writeup: WriteUp; index: numb
   }
 
   const handleClick = () => {
+    incrementViews() // 自動增加瀏覽數
     router.push(`/writeups/${writeup.slug}`)
   }
 
   const handleLike = (e: React.MouseEvent) => {
-    e.stopPropagation() // 防止觸發卡片點擊事件
-    setLikes(likes + 1)
-    onLike()
+    e.stopPropagation()
+    toggleLike()
+  }
+
+  const handleShare = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    incrementShares()
+
+    if (navigator.share) {
+      navigator.share({
+        title: writeup.title,
+        text: writeup.description,
+        url: `${window.location.origin}/writeups/${writeup.slug}`,
+      })
+    } else {
+      navigator.clipboard.writeText(`${window.location.origin}/writeups/${writeup.slug}`)
+      // 顯示複製成功提示
+      const toast = document.createElement("div")
+      toast.className = "fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg z-50"
+      toast.textContent = "連結已複製到剪貼板！"
+      document.body.appendChild(toast)
+      setTimeout(() => document.body.removeChild(toast), 2000)
+    }
   }
 
   return (
@@ -70,7 +92,7 @@ function WriteUpCard({ writeup, index, onLike }: { writeup: WriteUp; index: numb
       onClick={handleClick}
     >
       <div className="relative bg-black/60 backdrop-blur-xl border border-orange-400/30 rounded-xl p-4 md:p-6 h-full overflow-hidden hover:border-orange-400/60 transition-all duration-300 group-hover:transform group-hover:scale-105">
-        {/* 特色標籤 - 修復重複問題 */}
+        {/* 特色標籤 */}
         {writeup.featured && writeup.status !== "Featured" && (
           <div className="absolute top-3 right-3 z-10">
             <span className="px-2 py-1 bg-yellow-500 text-black text-xs font-bold rounded-full">⭐ Featured</span>
@@ -119,7 +141,7 @@ function WriteUpCard({ writeup, index, onLike }: { writeup: WriteUp; index: numb
             {writeup.title}
           </h2>
 
-          {/* 作者和日期 - 修復 author 對象渲染 */}
+          {/* 作者和日期 */}
           <div className="flex items-center gap-2 mb-3 text-xs text-orange-300">
             <span>✍️ {writeup.author.name}</span>
             <span>•</span>
@@ -164,22 +186,70 @@ function WriteUpCard({ writeup, index, onLike }: { writeup: WriteUp; index: numb
             )}
           </div>
 
-          {/* 統計資訊 - 清零所有數值 */}
+          {/* 統計資訊 - 使用即時數據 */}
           <div className="flex items-center justify-between text-xs text-gray-400 font-mono mb-4">
             <div className="flex items-center gap-3 md:gap-4">
-              <span>👁 {writeup.metrics.views || 0}</span>
-              <span className="cursor-pointer hover:text-red-400 transition-colors" onClick={handleLike}>
-                ❤️ {likes}
-              </span>
-              {writeup.metrics.shares && <span>📤 {writeup.metrics.shares}</span>}
-              {writeup.metrics.comments && <span>💬 {writeup.metrics.comments}</span>}
+              <motion.span
+                key={metrics.views}
+                initial={{ scale: 1 }}
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 0.3 }}
+              >
+                👁 {metrics.views}
+              </motion.span>
+              <motion.span
+                className={`cursor-pointer transition-colors ${isLiked ? "text-red-400" : "hover:text-red-400"}`}
+                onClick={handleLike}
+                key={metrics.likes}
+                initial={{ scale: 1 }}
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 0.3 }}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                {isLiked ? "❤️" : "🤍"} {metrics.likes}
+              </motion.span>
+              <motion.span
+                key={metrics.shares}
+                initial={{ scale: 1 }}
+                animate={{ scale: [1, 1.2, 1] }}
+                transition={{ duration: 0.3 }}
+              >
+                📤 {metrics.shares}
+              </motion.span>
+              <span>💬 {metrics.comments}</span>
             </div>
             <span>⏱ {writeup.readTime}</span>
           </div>
 
+          {/* 互動按鈕 */}
+          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
+            <motion.button
+              className={`flex-1 px-3 py-2 rounded-lg font-mono text-xs transition-all duration-300 ${
+                isLiked
+                  ? "bg-red-500 text-white"
+                  : "bg-gradient-to-r from-red-400/20 to-pink-400/20 text-red-400 border border-red-400/30 hover:bg-red-400 hover:text-black"
+              }`}
+              onClick={handleLike}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              {isLiked ? "❤️ 已讚" : "🤍 按讚"}
+            </motion.button>
+
+            <motion.button
+              className="flex-1 px-3 py-2 bg-gradient-to-r from-blue-400/20 to-purple-400/20 text-blue-400 border border-blue-400/30 rounded-lg font-mono text-xs hover:bg-blue-400 hover:text-black transition-all duration-300"
+              onClick={handleShare}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              📤 分享
+            </motion.button>
+          </div>
+
           {/* 閱讀按鈕 */}
           <motion.div
-            className="w-full px-4 py-2 bg-gradient-to-r from-orange-400 to-red-400 text-black font-bold rounded-lg font-mono text-center text-sm opacity-0 group-hover:opacity-100 transition-all duration-300"
+            className="w-full px-4 py-2 bg-gradient-to-r from-orange-400 to-red-400 text-black font-bold rounded-lg font-mono text-center text-sm mt-2 opacity-0 group-hover:opacity-100 transition-all duration-300"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
@@ -224,7 +294,10 @@ export default function WriteUpsPage() {
   const [selectedDifficulty, setSelectedDifficulty] = useState("All")
   const [sortBy, setSortBy] = useState("newest")
   const [filteredWriteups, setFilteredWriteups] = useState<WriteUp[]>([])
-  const [writeUps, setWriteUps] = useState<WriteUp[]>(WRITEUPS_DATABASE)
+  const [writeUps] = useState<WriteUp[]>(WRITEUPS_DATABASE)
+
+  // 使用即時統計數據
+  const liveStats = useAllWriteUpStats()
 
   useEffect(() => {
     setIsLoaded(true)
@@ -261,32 +334,23 @@ export default function WriteUpsPage() {
         results.sort((a, b) => new Date(a.publishedDate).getTime() - new Date(b.publishedDate).getTime())
         break
       case "popular":
-        results.sort((a, b) => Number.parseInt(b.metrics.likes || "0") - Number.parseInt(a.metrics.likes || "0"))
+        results.sort((a, b) => {
+          const aLikes = WriteUpStateManager.getInstance().getMetrics(a.id).likes
+          const bLikes = WriteUpStateManager.getInstance().getMetrics(b.id).likes
+          return bLikes - aLikes
+        })
         break
       case "views":
-        results.sort((a, b) => Number.parseInt(b.metrics.views || "0") - Number.parseInt(a.metrics.views || "0"))
+        results.sort((a, b) => {
+          const aViews = WriteUpStateManager.getInstance().getMetrics(a.id).views
+          const bViews = WriteUpStateManager.getInstance().getMetrics(b.id).views
+          return bViews - aViews
+        })
         break
     }
 
     setFilteredWriteups(results)
   }, [searchTerm, selectedCategory, selectedDifficulty, sortBy, writeUps])
-
-  // 修復 handleLike 函數
-  const handleLike = (writeUpId: string) => {
-    setWriteUps((prevWriteUps) =>
-      prevWriteUps.map((writeup) =>
-        writeup.id === writeUpId
-          ? {
-              ...writeup,
-              metrics: {
-                ...writeup.metrics,
-                likes: String(Number.parseInt(writeup.metrics.likes || "0") + 1),
-              },
-            }
-          : writeup,
-      ),
-    )
-  }
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -454,12 +518,7 @@ export default function WriteUpsPage() {
                 <h2 className="text-2xl md:text-3xl font-bold text-yellow-400 mb-6 text-center">⭐ 特色文章</h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
                   {featuredWriteups.slice(0, 2).map((writeup, index) => (
-                    <WriteUpCard
-                      key={writeup.id}
-                      writeup={writeup}
-                      index={index}
-                      onLike={() => handleLike(writeup.id)}
-                    />
+                    <WriteUpCard key={writeup.id} writeup={writeup} index={index} />
                   ))}
                 </div>
               </motion.div>
@@ -483,7 +542,7 @@ export default function WriteUpsPage() {
           {/* WriteUps 網格 */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8">
             {filteredWriteups.map((writeup, index) => (
-              <WriteUpCard key={writeup.id} writeup={writeup} index={index} onLike={() => handleLike(writeup.id)} />
+              <WriteUpCard key={writeup.id} writeup={writeup} index={index} />
             ))}
           </div>
 
@@ -513,7 +572,7 @@ export default function WriteUpsPage() {
             </motion.div>
           )}
 
-          {/* 統計資訊 - 修復 CSS 類名錯誤 */}
+          {/* 統計資訊 - 使用即時數據 */}
           <motion.div
             className="mt-12 md:mt-16 text-center"
             initial={{ opacity: 0 }}
@@ -522,19 +581,51 @@ export default function WriteUpsPage() {
           >
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
               <div className="bg-black/60 backdrop-blur-xl border border-orange-400/30 rounded-xl p-4 md:p-6">
-                <div className="text-2xl md:text-3xl font-bold text-orange-400 mb-2">{stats.total}</div>
+                <motion.div
+                  className="text-2xl md:text-3xl font-bold text-orange-400 mb-2"
+                  key={stats.total}
+                  initial={{ scale: 1 }}
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {stats.total}
+                </motion.div>
                 <div className="text-orange-300 font-mono text-sm md:text-base">技術文章</div>
               </div>
               <div className="bg-black/60 backdrop-blur-xl border border-red-400/30 rounded-xl p-4 md:p-6">
-                <div className="text-2xl md:text-3xl font-bold text-red-400 mb-2">{stats.categories}</div>
+                <motion.div
+                  className="text-2xl md:text-3xl font-bold text-red-400 mb-2"
+                  key={stats.categories}
+                  initial={{ scale: 1 }}
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {stats.categories}
+                </motion.div>
                 <div className="text-red-300 font-mono text-sm md:text-base">技術領域</div>
               </div>
               <div className="bg-black/60 backdrop-blur-xl border border-purple-400/30 rounded-xl p-4 md:p-6">
-                <div className="text-2xl md:text-3xl font-bold text-purple-400 mb-2">{stats.totalViews}</div>
+                <motion.div
+                  className="text-2xl md:text-3xl font-bold text-purple-400 mb-2"
+                  key={liveStats.totalViews}
+                  initial={{ scale: 1 }}
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {liveStats.totalViews}
+                </motion.div>
                 <div className="text-purple-300 font-mono text-sm md:text-base">總閱讀量</div>
               </div>
               <div className="bg-black/60 backdrop-blur-xl border border-green-400/30 rounded-xl p-4 md:p-6">
-                <div className="text-2xl md:text-3xl font-bold text-green-400 mb-2">{stats.totalLikes}</div>
+                <motion.div
+                  className="text-2xl md:text-3xl font-bold text-green-400 mb-2"
+                  key={liveStats.totalLikes}
+                  initial={{ scale: 1 }}
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {liveStats.totalLikes}
+                </motion.div>
                 <div className="text-green-300 font-mono text-sm md:text-base">總讚數</div>
               </div>
             </div>
