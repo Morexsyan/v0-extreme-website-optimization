@@ -1,22 +1,25 @@
 "use client"
 
+import type React from "react"
+
 import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import PersistentHomeButton from "@/components/persistent-home-button"
 import {
-  WRITEUPS_DATABASE,
   CATEGORIES,
   DIFFICULTIES,
   searchWriteUps,
   getFeaturedWriteUps,
   getWriteUpStats,
   type WriteUp,
+  loadWriteUps,
 } from "@/lib/writeups-data"
 
 // WriteUp 卡片組件 - 修復 author 對象渲染問題
-function WriteUpCard({ writeup, index }: { writeup: WriteUp; index: number }) {
+function WriteUpCard({ writeup, index, onLike }: { writeup: WriteUp; index: number; onLike: () => void }) {
   const router = useRouter()
+  const [likes, setLikes] = useState(Number.parseInt(writeup.metrics.likes || "0"))
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -50,6 +53,12 @@ function WriteUpCard({ writeup, index }: { writeup: WriteUp; index: number }) {
 
   const handleClick = () => {
     router.push(`/writeups/${writeup.slug}`)
+  }
+
+  const handleLike = (e: React.MouseEvent) => {
+    e.stopPropagation() // 防止觸發卡片點擊事件
+    setLikes(likes + 1)
+    onLike()
   }
 
   return (
@@ -158,10 +167,12 @@ function WriteUpCard({ writeup, index }: { writeup: WriteUp; index: number }) {
           {/* 統計資訊 - 清零所有數值 */}
           <div className="flex items-center justify-between text-xs text-gray-400 font-mono mb-4">
             <div className="flex items-center gap-3 md:gap-4">
-              <span>👁 0</span>
-              <span>❤️ 0</span>
-              {writeup.metrics.shares && <span>📤 0</span>}
-              {writeup.metrics.comments && <span>💬 0</span>}
+              <span>👁 {writeup.metrics.views || 0}</span>
+              <span className="cursor-pointer hover:text-red-400 transition-colors" onClick={handleLike}>
+                ❤️ {likes}
+              </span>
+              {writeup.metrics.shares && <span>📤 {writeup.metrics.shares}</span>}
+              {writeup.metrics.comments && <span>💬 {writeup.metrics.comments}</span>}
             </div>
             <span>⏱ {writeup.readTime}</span>
           </div>
@@ -212,19 +223,35 @@ export default function WriteUpsPage() {
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [selectedDifficulty, setSelectedDifficulty] = useState("All")
   const [sortBy, setSortBy] = useState("newest")
-  const [filteredWriteups, setFilteredWriteups] = useState<WriteUp[]>(WRITEUPS_DATABASE)
+  const [filteredWriteups, setFilteredWriteups] = useState<WriteUp[]>([])
+  const [writeUps, setWriteUps] = useState<WriteUp[]>([])
+  const [stats, setStats] = useState({ total: 0, categories: 0 })
+  const [featuredWriteups, setFeaturedWriteups] = useState<WriteUp[]>([])
 
   useEffect(() => {
-    setIsLoaded(true)
+    const loadAndSetWriteUps = async () => {
+      const data = await loadWriteUps()
+      setWriteUps(data)
+      setIsLoaded(true)
+    }
+
+    loadAndSetWriteUps()
   }, [])
+
+  useEffect(() => {
+    if (isLoaded) {
+      setStats(getWriteUpStats(writeUps))
+      setFeaturedWriteups(getFeaturedWriteUps(writeUps))
+    }
+  }, [isLoaded, writeUps])
 
   // 篩選和搜索邏輯
   useEffect(() => {
-    let results = WRITEUPS_DATABASE
+    let results = writeUps
 
     // 搜索
     if (searchTerm) {
-      results = searchWriteUps(searchTerm)
+      results = searchWriteUps(searchTerm, results)
     }
 
     // 分類篩選
@@ -246,20 +273,32 @@ export default function WriteUpsPage() {
         results.sort((a, b) => new Date(a.publishedDate).getTime() - new Date(b.publishedDate).getTime())
         break
       case "popular":
-        // 由於數值已清零，這裡不再基於點讚數排序
-        results.sort((a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime())
+        results.sort((a, b) => (b.metrics.likes || 0) - (a.metrics.likes || 0))
         break
       case "views":
-        // 由於數值已清零，這裡不再基於閱讀量排序
-        results.sort((a, b) => new Date(b.publishedDate).getTime() - new Date(a.publishedDate).getTime())
+        results.sort((a, b) => (b.metrics.views || 0) - (a.metrics.views || 0))
         break
     }
 
     setFilteredWriteups(results)
-  }, [searchTerm, selectedCategory, selectedDifficulty, sortBy])
+  }, [searchTerm, selectedCategory, selectedDifficulty, sortBy, writeUps, isLoaded])
 
-  const stats = getWriteUpStats()
-  const featuredWriteups = getFeaturedWriteUps()
+  // 修復 handleLike 函數
+  const handleLike = (writeUpId: string) => {
+    setWriteUps((prevWriteUps) =>
+      prevWriteUps.map((writeup) =>
+        writeup.id === writeUpId
+          ? {
+              ...writeup,
+              metrics: {
+                ...writeup.metrics,
+                likes: String(Number.parseInt(writeup.metrics.likes || "0") + 1),
+              },
+            }
+          : writeup,
+      ),
+    )
+  }
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -427,7 +466,12 @@ export default function WriteUpsPage() {
                 <h2 className="text-2xl md:text-3xl font-bold text-yellow-400 mb-6 text-center">⭐ 特色文章</h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
                   {featuredWriteups.slice(0, 2).map((writeup, index) => (
-                    <WriteUpCard key={writeup.id} writeup={writeup} index={index} />
+                    <WriteUpCard
+                      key={writeup.id}
+                      writeup={writeup}
+                      index={index}
+                      onLike={() => handleLike(writeup.id)}
+                    />
                   ))}
                 </div>
               </motion.div>
@@ -451,7 +495,7 @@ export default function WriteUpsPage() {
           {/* WriteUps 網格 */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 md:gap-8">
             {filteredWriteups.map((writeup, index) => (
-              <WriteUpCard key={writeup.id} writeup={writeup} index={index} />
+              <WriteUpCard key={writeup.id} writeup={writeup} index={index} onLike={() => handleLike(writeup.id)} />
             ))}
           </div>
 
@@ -498,11 +542,15 @@ export default function WriteUpsPage() {
                 <div className="text-red-300 font-mono text-sm md:text-base">技術領域</div>
               </div>
               <div className="bg-black/60 backdrop-blur-xl border border-purple-400/30 rounded-xl p-4 md:p-6">
-                <div className="text-2xl md:text-3xl font-bold text-purple-400 mb-2">0</div>
+                <div className="text-2xl md:text-3xl font-bold text-purple-400 mb-2">
+                  {writeUps.reduce((sum, writeup) => sum + Number.parseInt(writeup.metrics.views || "0"), 0)}
+                </div>
                 <div className="text-purple-300 font-mono text-sm md:text-base">總閱讀量</div>
               </div>
               <div className="bg-black/60 backdrop-blur-xl border border-green-400/30 rounded-xl p-4 md:p-6">
-                <div className="text-2xl md:text-3xl font-bold text-green-400 mb-2">0</div>
+                <div className="text-2xl md:text-3xl font-bold text-green-400 mb-2">
+                  {writeUps.reduce((sum, writeup) => sum + Number.parseInt(writeup.metrics.likes || "0"), 0)}
+                </div>
                 <div className="text-green-300 font-mono text-sm md:text-base">總讚數</div>
               </div>
             </div>
