@@ -2,10 +2,6 @@ import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
 import CryptoJS from "crypto-js"
 
-// 管理員憑證（在生產環境中應該從環境變量讀取）
-const ADMIN_EMAIL = "morex.rick@gmail.com"
-const ADMIN_PASSWORD_HASH = "$2a$12$8K9wE2nF5qL7mP3rT6uV8eXyZ1cA4bD7fG9hJ2kL5mN8oP1qR3sT4u" // S126027981 的 bcrypt hash
-
 // 安全配置
 const JWT_SECRET = process.env.JWT_SECRET!
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY!
@@ -132,15 +128,6 @@ export class SecurityManager {
     }
   }
 
-  // 驗證管理員憑證
-  static async validateAdmin(email: string, password: string): Promise<boolean> {
-    if (email !== ADMIN_EMAIL) {
-      return false
-    }
-
-    return await this.verifyPassword(password, ADMIN_PASSWORD_HASH)
-  }
-
   // 生成 CSRF 令牌
   static generateCSRFToken(): string {
     return this.generateSecureId()
@@ -185,9 +172,11 @@ export class SecurityManager {
 }
 
 // 定期清理過期記錄
-setInterval(
-  () => {
-    SecurityManager.cleanupLoginAttempts()
-  },
-  5 * 60 * 1000,
-) // 每 5 分鐘清理一次
+if (typeof setInterval !== "undefined") {
+  setInterval(
+    () => {
+      SecurityManager.cleanupLoginAttempts()
+    },
+    5 * 60 * 1000,
+  ) // 每 5 分鐘清理一次
+}

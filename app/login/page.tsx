@@ -43,17 +43,26 @@ export default function LoginPage() {
 
     setLoginState((prev) => ({ ...prev, isLoading: true, error: "" }))
 
-    const result = await login(formData.email, formData.password)
+    try {
+      const result = await login(formData.email, formData.password)
 
-    if (result.success) {
-      router.push("/admin")
-    } else {
+      if (result.success) {
+        router.push("/admin")
+      } else {
+        setLoginState((prev) => ({
+          ...prev,
+          isLoading: false,
+          error: result.error || "登錄失敗",
+          remainingAttempts: result.remainingAttempts || null,
+          lockedUntil: result.lockedUntil || null,
+        }))
+      }
+    } catch (error) {
+      console.error("Login error:", error)
       setLoginState((prev) => ({
         ...prev,
         isLoading: false,
-        error: result.error || "登錄失敗",
-        remainingAttempts: result.remainingAttempts || null,
-        lockedUntil: result.lockedUntil || null,
+        error: "登錄過程中發生錯誤，請稍後再試",
       }))
     }
   }
@@ -279,7 +288,7 @@ export default function LoginPage() {
             </form>
 
             {/* 安全資訊 */}
-            <div className="mt-6 text-center">
+            <div className="mt-6 md:mt-8 text-center">
               <div className="flex items-center justify-center gap-4 text-xs text-red-400">
                 <span>🔒 AES-256 加密</span>
                 <span>🛡️ JWT 認證</span>

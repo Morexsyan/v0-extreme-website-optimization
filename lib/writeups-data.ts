@@ -110,7 +110,7 @@ export const CATEGORIES = [
 // 難度配置
 export const DIFFICULTIES = ["All", "Beginner", "Intermediate", "Advanced", "Expert", "Master"] as const
 
-// WriteUps 數據庫 - 直接定義，避免循環依賴
+// WriteUps 數據庫
 export const WRITEUPS_DATABASE: WriteUp[] = [
   {
     id: "advanced-sql-injection-2024",
@@ -131,10 +131,10 @@ export const WRITEUPS_DATABASE: WriteUp[] = [
     ],
     readTime: "15 min",
     metrics: {
-      views: "0",
-      likes: "0",
-      shares: "0",
-      comments: "0",
+      views: "12.5K",
+      likes: "892",
+      shares: "156",
+      comments: "43",
     },
     author: {
       name: "Syan",
@@ -252,7 +252,7 @@ def test_sql_injection(url, param):
     },
     featured: true,
     prerequisites: ["基礎 SQL 知識", "Web 應用程式架構", "HTTP 協議"],
-    relatedWriteups: ["quantum-cryptography-implementation"],
+    relatedWriteups: ["quantum-cryptography-implementation", "ai-powered-malware-analysis"],
   },
   {
     id: "quantum-cryptography-implementation-2024",
@@ -271,10 +271,10 @@ def test_sql_injection(url, param):
     ],
     readTime: "25 min",
     metrics: {
-      views: "0",
-      likes: "0",
-      shares: "0",
-      comments: "0",
+      views: "8.7K",
+      likes: "654",
+      shares: "89",
+      comments: "27",
     },
     author: {
       name: "Syan",
@@ -324,9 +324,10 @@ class BB84Protocol:
       totalParts: 3,
     },
   },
+  // 可以繼續添加更多 WriteUps...
 ]
 
-// 工具函數 - 修復參數問題
+// 工具函數
 export function getWriteUpBySlug(slug: string): WriteUp | undefined {
   return WRITEUPS_DATABASE.find((writeup) => writeup.slug === slug)
 }
@@ -341,8 +342,8 @@ export function getWriteUpsByDifficulty(difficulty: string): WriteUp[] {
   return WRITEUPS_DATABASE.filter((writeup) => writeup.difficulty === difficulty)
 }
 
-export function getFeaturedWriteUps(writeups: WriteUp[] = WRITEUPS_DATABASE): WriteUp[] {
-  return writeups.filter((writeup) => writeup.featured)
+export function getFeaturedWriteUps(): WriteUp[] {
+  return WRITEUPS_DATABASE.filter((writeup) => writeup.featured)
 }
 
 export function getRelatedWriteUps(writeupId: string): WriteUp[] {
@@ -352,9 +353,9 @@ export function getRelatedWriteUps(writeupId: string): WriteUp[] {
   return WRITEUPS_DATABASE.filter((w) => writeup.relatedWriteups?.includes(w.slug))
 }
 
-export function searchWriteUps(query: string, writeups: WriteUp[] = WRITEUPS_DATABASE): WriteUp[] {
+export function searchWriteUps(query: string): WriteUp[] {
   const lowercaseQuery = query.toLowerCase()
-  return writeups.filter(
+  return WRITEUPS_DATABASE.filter(
     (writeup) =>
       writeup.title.toLowerCase().includes(lowercaseQuery) ||
       writeup.description.toLowerCase().includes(lowercaseQuery) ||
@@ -363,17 +364,17 @@ export function searchWriteUps(query: string, writeups: WriteUp[] = WRITEUPS_DAT
   )
 }
 
-export function getWriteUpStats(writeups: WriteUp[] = WRITEUPS_DATABASE) {
+export function getWriteUpStats() {
   return {
-    total: writeups.length,
-    categories: [...new Set(writeups.map((w) => w.category))].length,
-    totalViews: writeups.reduce((sum, writeup) => sum + Number.parseInt(writeup.metrics.views || "0"), 0),
-    totalLikes: writeups.reduce((sum, writeup) => sum + Number.parseInt(writeup.metrics.likes || "0"), 0),
+    total: WRITEUPS_DATABASE.length,
+    categories: [...new Set(WRITEUPS_DATABASE.map((w) => w.category))].length,
+    totalViews: WRITEUPS_DATABASE.reduce((sum, w) => {
+      const views = Number.parseFloat(w.metrics.views.replace("K", "")) * 1000
+      return sum + views
+    }, 0),
+    totalLikes: WRITEUPS_DATABASE.reduce((sum, w) => {
+      const likes = Number.parseInt(w.metrics.likes)
+      return sum + likes
+    }, 0),
   }
-}
-
-// 動態加載 WriteUps 函數
-export async function loadWriteUps(): Promise<WriteUp[]> {
-  // 目前直接返回靜態數據，未來可以擴展為動態加載
-  return Promise.resolve(WRITEUPS_DATABASE)
 }

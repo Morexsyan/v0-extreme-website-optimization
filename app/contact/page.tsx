@@ -126,20 +126,21 @@ export default function ContactPage() {
 
                 <div className="space-y-4 md:space-y-6">
                   {[
-                    { icon: "📧", label: "Email", value: "morex.rick@gmail.com", href: "mailto:morex.rick@gmail.com" },
+                    { icon: "📧", label: "Email", value: "syan@quantum.dev", href: "mailto:syan@quantum.dev" },
                     {
                       icon: "🐙",
                       label: "GitHub",
-                      value: "github.com/Morexsyan",
-                      href: "https://github.com/Morexsyan",
+                      value: "github.com/syan-quantum",
+                      href: "https://github.com/syan-quantum",
                     },
                     {
                       icon: "💼",
-                      label: "discord",
-                      value: "discord.gg/c8nMcwqq",
-                      href: "https://discord.gg/c8nMcwqq",
+                      label: "LinkedIn",
+                      value: "linkedin.com/in/syan-quantum",
+                      href: "https://linkedin.com/in/syan-quantum",
                     },
-                    { icon: "💬", label: "Discord", value: "shunshun1234_80520", href: "#" },
+                    { icon: "🐦", label: "Twitter", value: "@syan_quantum", href: "https://twitter.com/syan_quantum" },
+                    { icon: "💬", label: "Discord", value: "Syan#1337", href: "#" },
                   ].map((contact, index) => (
                     <motion.a
                       key={contact.label}

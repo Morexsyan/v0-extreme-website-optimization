@@ -1,12 +1,9 @@
 "use client"
 
-import type React from "react"
-import WriteUpStateManager from "@/lib/writeup-state-manager"
 import { motion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import PersistentHomeButton from "@/components/persistent-home-button"
-import { useWriteUpMetrics, useAllWriteUpStats } from "@/hooks/use-writeup-metrics"
 import {
   WRITEUPS_DATABASE,
   CATEGORIES,
@@ -17,10 +14,45 @@ import {
   type WriteUp,
 } from "@/lib/writeups-data"
 
-// WriteUp 卡片組件 - 使用新的狀態管理
+// WriteUp 卡片組件
 function WriteUpCard({ writeup, index }: { writeup: WriteUp; index: number }) {
   const router = useRouter()
-  const { metrics, isLiked, incrementViews, toggleLike, incrementShares } = useWriteUpMetrics(writeup.id)
+
+  const [metrics, setMetrics] = useState({
+    views: writeup.metrics.views,
+    likes: writeup.metrics.likes,
+    shares: writeup.metrics.shares || "0",
+    comments: writeup.metrics.comments || "0",
+  })
+
+  useEffect(() => {
+    // Simulate a view when the card is rendered
+    const currentViews = Number.parseInt(metrics.views.replace("K", "000"))
+    const newViews = currentViews + 1
+    const formattedViews = newViews >= 1000 ? `${(newViews / 1000).toFixed(1)}K` : newViews.toString()
+
+    setMetrics((prev) => ({
+      ...prev,
+      views: formattedViews,
+    }))
+
+    // Set up interval for simulating real-time updates
+    const interval = setInterval(() => {
+      setMetrics((prev) => {
+        // Randomly update likes occasionally
+        if (Math.random() > 0.7) {
+          const currentLikes = Number.parseInt(prev.likes)
+          return {
+            ...prev,
+            likes: (currentLikes + 1).toString(),
+          }
+        }
+        return prev
+      })
+    }, 30000) // Update every 30 seconds
+
+    return () => clearInterval(interval)
+  }, [])
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -53,34 +85,7 @@ function WriteUpCard({ writeup, index }: { writeup: WriteUp; index: number }) {
   }
 
   const handleClick = () => {
-    incrementViews() // 自動增加瀏覽數
     router.push(`/writeups/${writeup.slug}`)
-  }
-
-  const handleLike = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    toggleLike()
-  }
-
-  const handleShare = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    incrementShares()
-
-    if (navigator.share) {
-      navigator.share({
-        title: writeup.title,
-        text: writeup.description,
-        url: `${window.location.origin}/writeups/${writeup.slug}`,
-      })
-    } else {
-      navigator.clipboard.writeText(`${window.location.origin}/writeups/${writeup.slug}`)
-      // 顯示複製成功提示
-      const toast = document.createElement("div")
-      toast.className = "fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg z-50"
-      toast.textContent = "連結已複製到剪貼板！"
-      document.body.appendChild(toast)
-      setTimeout(() => document.body.removeChild(toast), 2000)
-    }
   }
 
   return (
@@ -186,70 +191,35 @@ function WriteUpCard({ writeup, index }: { writeup: WriteUp; index: number }) {
             )}
           </div>
 
-          {/* 統計資訊 - 使用即時數據 */}
+          {/* 統計資訊 */}
           <div className="flex items-center justify-between text-xs text-gray-400 font-mono mb-4">
             <div className="flex items-center gap-3 md:gap-4">
-              <motion.span
-                key={metrics.views}
-                initial={{ scale: 1 }}
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 0.3 }}
-              >
-                👁 {metrics.views}
-              </motion.span>
-              <motion.span
-                className={`cursor-pointer transition-colors ${isLiked ? "text-red-400" : "hover:text-red-400"}`}
-                onClick={handleLike}
-                key={metrics.likes}
-                initial={{ scale: 1 }}
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 0.3 }}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-              >
-                {isLiked ? "❤️" : "🤍"} {metrics.likes}
-              </motion.span>
-              <motion.span
-                key={metrics.shares}
-                initial={{ scale: 1 }}
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 0.3 }}
-              >
-                📤 {metrics.shares}
-              </motion.span>
-              <span>💬 {metrics.comments}</span>
+              <span>👁 {metrics.views}</span>
+              <span>❤️ {metrics.likes}</span>
+              {metrics.shares && Number.parseInt(metrics.shares) > 0 && <span>📤 {metrics.shares}</span>}
+              {metrics.comments && Number.parseInt(metrics.comments) > 0 && <span>💬 {metrics.comments}</span>}
             </div>
             <span>⏱ {writeup.readTime}</span>
           </div>
 
-          {/* 互動按鈕 */}
-          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
-            <motion.button
-              className={`flex-1 px-3 py-2 rounded-lg font-mono text-xs transition-all duration-300 ${
-                isLiked
-                  ? "bg-red-500 text-white"
-                  : "bg-gradient-to-r from-red-400/20 to-pink-400/20 text-red-400 border border-red-400/30 hover:bg-red-400 hover:text-black"
-              }`}
-              onClick={handleLike}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+          <div className="flex justify-end mb-4">
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setMetrics((prev) => ({
+                  ...prev,
+                  likes: (Number.parseInt(prev.likes) + 1).toString(),
+                }))
+              }}
+              className="px-2 py-1 bg-red-400/20 text-red-300 text-xs rounded-full border border-red-400/30 hover:bg-red-400 hover:text-white transition-all duration-300"
             >
-              {isLiked ? "❤️ 已讚" : "🤍 按讚"}
-            </motion.button>
-
-            <motion.button
-              className="flex-1 px-3 py-2 bg-gradient-to-r from-blue-400/20 to-purple-400/20 text-blue-400 border border-blue-400/30 rounded-lg font-mono text-xs hover:bg-blue-400 hover:text-black transition-all duration-300"
-              onClick={handleShare}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              📤 分享
-            </motion.button>
+              ❤️ 讚
+            </button>
           </div>
 
           {/* 閱讀按鈕 */}
           <motion.div
-            className="w-full px-4 py-2 bg-gradient-to-r from-orange-400 to-red-400 text-black font-bold rounded-lg font-mono text-center text-sm mt-2 opacity-0 group-hover:opacity-100 transition-all duration-300"
+            className="w-full px-4 py-2 bg-gradient-to-r from-orange-400 to-red-400 text-black font-bold rounded-lg font-mono text-center text-sm opacity-0 group-hover:opacity-100 transition-all duration-300"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
@@ -293,26 +263,19 @@ export default function WriteUpsPage() {
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [selectedDifficulty, setSelectedDifficulty] = useState("All")
   const [sortBy, setSortBy] = useState("newest")
-  const [filteredWriteups, setFilteredWriteups] = useState<WriteUp[]>([])
-  const [writeUps] = useState<WriteUp[]>(WRITEUPS_DATABASE)
-
-  // 使用即時統計數據
-  const liveStats = useAllWriteUpStats()
+  const [filteredWriteups, setFilteredWriteups] = useState<WriteUp[]>(WRITEUPS_DATABASE)
 
   useEffect(() => {
     setIsLoaded(true)
   }, [])
 
-  const stats = getWriteUpStats(writeUps)
-  const featuredWriteups = getFeaturedWriteUps(writeUps)
-
   // 篩選和搜索邏輯
   useEffect(() => {
-    let results = writeUps
+    let results = WRITEUPS_DATABASE
 
     // 搜索
     if (searchTerm) {
-      results = searchWriteUps(searchTerm, results)
+      results = searchWriteUps(searchTerm)
     }
 
     // 分類篩選
@@ -334,23 +297,21 @@ export default function WriteUpsPage() {
         results.sort((a, b) => new Date(a.publishedDate).getTime() - new Date(b.publishedDate).getTime())
         break
       case "popular":
-        results.sort((a, b) => {
-          const aLikes = WriteUpStateManager.getInstance().getMetrics(a.id).likes
-          const bLikes = WriteUpStateManager.getInstance().getMetrics(b.id).likes
-          return bLikes - aLikes
-        })
+        results.sort((a, b) => Number.parseInt(b.metrics.likes) - Number.parseInt(a.metrics.likes))
         break
       case "views":
-        results.sort((a, b) => {
-          const aViews = WriteUpStateManager.getInstance().getMetrics(a.id).views
-          const bViews = WriteUpStateManager.getInstance().getMetrics(b.id).views
-          return bViews - aViews
-        })
+        results.sort(
+          (a, b) =>
+            Number.parseFloat(b.metrics.views.replace("K", "")) - Number.parseFloat(a.metrics.views.replace("K", "")),
+        )
         break
     }
 
     setFilteredWriteups(results)
-  }, [searchTerm, selectedCategory, selectedDifficulty, sortBy, writeUps])
+  }, [searchTerm, selectedCategory, selectedDifficulty, sortBy])
+
+  const stats = getWriteUpStats()
+  const featuredWriteups = getFeaturedWriteUps()
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -546,7 +507,7 @@ export default function WriteUpsPage() {
             ))}
           </div>
 
-          {/* 無結果提示 */}
+          {/* 無結果��示 */}
           {filteredWriteups.length === 0 && (
             <motion.div
               className="text-center py-12"
@@ -572,7 +533,7 @@ export default function WriteUpsPage() {
             </motion.div>
           )}
 
-          {/* 統計資訊 - 使用即時數據 */}
+          {/* 統計資訊 */}
           <motion.div
             className="mt-12 md:mt-16 text-center"
             initial={{ opacity: 0 }}
@@ -581,51 +542,21 @@ export default function WriteUpsPage() {
           >
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
               <div className="bg-black/60 backdrop-blur-xl border border-orange-400/30 rounded-xl p-4 md:p-6">
-                <motion.div
-                  className="text-2xl md:text-3xl font-bold text-orange-400 mb-2"
-                  key={stats.total}
-                  initial={{ scale: 1 }}
-                  animate={{ scale: [1, 1.1, 1] }}
-                  transition={{ duration: 0.3 }}
-                >
-                  {stats.total}
-                </motion.div>
+                <div className="text-2xl md:text-3xl font-bold text-orange-400 mb-2">{stats.total}+</div>
                 <div className="text-orange-300 font-mono text-sm md:text-base">技術文章</div>
               </div>
               <div className="bg-black/60 backdrop-blur-xl border border-red-400/30 rounded-xl p-4 md:p-6">
-                <motion.div
-                  className="text-2xl md:text-3xl font-bold text-red-400 mb-2"
-                  key={stats.categories}
-                  initial={{ scale: 1 }}
-                  animate={{ scale: [1, 1.1, 1] }}
-                  transition={{ duration: 0.3 }}
-                >
-                  {stats.categories}
-                </motion.div>
+                <div className="text-2xl md:text-3xl font-bold text-red-400 mb-2">{stats.categories}+</div>
                 <div className="text-red-300 font-mono text-sm md:text-base">技術領域</div>
               </div>
               <div className="bg-black/60 backdrop-blur-xl border border-purple-400/30 rounded-xl p-4 md:p-6">
-                <motion.div
-                  className="text-2xl md:text-3xl font-bold text-purple-400 mb-2"
-                  key={liveStats.totalViews}
-                  initial={{ scale: 1 }}
-                  animate={{ scale: [1, 1.1, 1] }}
-                  transition={{ duration: 0.3 }}
-                >
-                  {liveStats.totalViews}
-                </motion.div>
+                <div className="text-2xl md:text-3xl font-bold text-purple-400 mb-2">
+                  {Math.round(stats.totalViews / 1000)}K+
+                </div>
                 <div className="text-purple-300 font-mono text-sm md:text-base">總閱讀量</div>
               </div>
               <div className="bg-black/60 backdrop-blur-xl border border-green-400/30 rounded-xl p-4 md:p-6">
-                <motion.div
-                  className="text-2xl md:text-3xl font-bold text-green-400 mb-2"
-                  key={liveStats.totalLikes}
-                  initial={{ scale: 1 }}
-                  animate={{ scale: [1, 1.1, 1] }}
-                  transition={{ duration: 0.3 }}
-                >
-                  {liveStats.totalLikes}
-                </motion.div>
+                <div className="text-2xl md:text-3xl font-bold text-green-400 mb-2">{stats.totalLikes}+</div>
                 <div className="text-green-300 font-mono text-sm md:text-base">總讚數</div>
               </div>
             </div>

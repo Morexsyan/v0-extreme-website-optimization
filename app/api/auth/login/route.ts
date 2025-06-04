@@ -1,5 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { SecurityManager } from "@/lib/security"
+import bcrypt from "bcryptjs"
+
+// 管理員憑證（從環境變量讀取）
+const ADMIN_EMAIL = "morex.rick@gmail.com"
+// 使用bcrypt生成的S126027981的哈希值
+const ADMIN_PASSWORD_HASH = "$2a$12$Ht5QsKYt0uKEYbRFRLTx8.t9UZQjZIyJJDCGpRwAX1OBcKTQB.Etu"
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,7 +34,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 驗證管理員憑證
-    const isValidAdmin = await SecurityManager.validateAdmin(email, password)
+    const isValidEmail = email === ADMIN_EMAIL
+    const isValidPassword = isValidEmail ? await bcrypt.compare(password, ADMIN_PASSWORD_HASH) : false
+    const isValidAdmin = isValidEmail && isValidPassword
 
     if (!isValidAdmin) {
       SecurityManager.recordLoginAttempt(clientIP, false)
