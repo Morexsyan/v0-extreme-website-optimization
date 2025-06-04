@@ -155,10 +155,11 @@ function WebGLErrorBoundary({ children }: { children: ReactNode }) {
   const [canvasKey, setCanvasKey] = useState(0)
 
   useEffect(() => {
-    // 檢查 WebGL 支持
+    // 只在客戶端檢查 WebGL 支持
+    if (typeof window === "undefined") return
+
     const checkWebGLSupport = () => {
       try {
-        // 創建一個臨時 canvas 來測試 WebGL 支持
         const testCanvas = document.createElement("canvas")
         testCanvas.width = 1
         testCanvas.height = 1
@@ -174,13 +175,11 @@ function WebGLErrorBoundary({ children }: { children: ReactNode }) {
           return false
         }
 
-        // 測試基本 WebGL 功能
         const renderer = gl.getParameter(gl.RENDERER)
         const vendor = gl.getParameter(gl.VENDOR)
         console.log("WebGL Renderer:", renderer)
         console.log("WebGL Vendor:", vendor)
 
-        // 清理測試 canvas
         testCanvas.remove()
         return true
       } catch (e) {
@@ -193,13 +192,11 @@ function WebGLErrorBoundary({ children }: { children: ReactNode }) {
     const isSupported = checkWebGLSupport()
 
     if (isSupported) {
-      // 監聽頁面可見性變化
       const handleVisibilityChange = () => {
         if (document.hidden) {
           console.log("Page hidden, preparing for context loss...")
         } else {
           console.log("Page visible, checking WebGL context...")
-          // 強制重新創建 Canvas
           setCanvasKey((prev) => prev + 1)
         }
       }
@@ -216,7 +213,6 @@ function WebGLErrorBoundary({ children }: { children: ReactNode }) {
     console.warn("WebGL context lost, attempting recovery...")
     setHasError(true)
 
-    // 延遲恢復，給瀏覽器時間清理
     setTimeout(() => {
       setCanvasKey((prev) => prev + 1)
       setHasError(false)
@@ -231,7 +227,6 @@ function WebGLErrorBoundary({ children }: { children: ReactNode }) {
   if (!isWebGLSupported || hasError) {
     return (
       <div className="fixed inset-0 z-0 bg-gradient-to-br from-black via-gray-900 to-black">
-        {/* 降級的 CSS 動畫背景 */}
         {Array.from({ length: 20 }).map((_, i) => (
           <motion.div
             key={i}
@@ -275,7 +270,6 @@ function Scene3D() {
   useEffect(() => {
     setIsMounted(true)
 
-    // 檢測設備性能
     const checkPerformance = () => {
       if (typeof window === "undefined") return false
 
@@ -288,9 +282,8 @@ function Scene3D() {
     setIsLowPerformance(checkPerformance())
   }, [isMobile])
 
-  // 如果不在客戶端，返回一個簡單的佔位符
   if (!isMounted) {
-    return <div className="fixed inset-0 z-0 bg-gradient-to-br from-black via-gray-900 to-black">{/* 靜態背景 */}</div>
+    return <div className="fixed inset-0 z-0 bg-gradient-to-br from-black via-gray-900 to-black"></div>
   }
 
   return (
@@ -307,17 +300,13 @@ function Scene3D() {
         dpr={isLowPerformance ? 1 : typeof window !== "undefined" ? Math.min(window.devicePixelRatio, 2) : 1}
         performance={{ min: 0.5 }}
         onCreated={({ gl }) => {
-          // 設置 WebGL 上下文丟失處理
           const handleContextLost = (event: Event) => {
             event.preventDefault()
             console.warn("WebGL context lost, attempting to recover...")
 
-            // 嘗試釋放資源
             if (typeof window !== "undefined") {
-              // 清除任何可能的 GPU 密集型任務
               window.setTimeout(() => {
                 console.log("Attempting to restore WebGL context...")
-                // 觸發重新渲染
                 const canvas = gl.domElement
                 if (canvas.parentNode) {
                   const parent = canvas.parentNode
@@ -336,12 +325,10 @@ function Scene3D() {
           gl.domElement.addEventListener("webglcontextlost", handleContextLost)
           gl.domElement.addEventListener("webglcontextrestored", handleContextRestored)
 
-          // 設置更保守的 WebGL 參數
-          gl.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+          if (typeof window !== "undefined") {
+            gl.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+          }
           gl.setClearColor(0x000000, 1)
-
-          // 減少 WebGL 內存使用
-          gl.compile(gl.getScene(), gl.getCamera())
         }}
       >
         <Suspense fallback={null}>
@@ -455,7 +442,6 @@ function Navigation() {
   const handleNavigation = (section: any) => {
     setActiveSection(section.id)
 
-    // 添加點擊反饋效果
     if (typeof document !== "undefined") {
       const ripple = document.createElement("div")
       ripple.className = "fixed w-4 h-4 bg-green-400 rounded-full pointer-events-none z-50 animate-ping"
@@ -469,9 +455,7 @@ function Navigation() {
       }, 1000)
     }
 
-    // 路由導航
     if (section.route.startsWith("#")) {
-      // 如果是錨點，滾動到對應區域
       if (typeof document !== "undefined") {
         const element = document.querySelector(section.route)
         if (element) {
@@ -479,12 +463,10 @@ function Navigation() {
         }
       }
     } else if (section.route === "/") {
-      // 如果是首頁，滾動到頂部
       if (typeof window !== "undefined") {
         window.scrollTo({ top: 0, behavior: "smooth" })
       }
     } else {
-      // 導航到其他頁面
       router.push(section.route)
     }
   }
@@ -609,7 +591,6 @@ function SkillCard({ skill, index }: { skill: any; index: number }) {
       onHoverEnd={() => setIsHovered(false)}
     >
       <div className="relative bg-black/60 backdrop-blur-xl border border-green-400/30 rounded-xl p-4 md:p-6 h-full overflow-hidden">
-        {/* 背景動畫 */}
         <motion.div
           className="absolute inset-0 bg-gradient-to-br from-green-400/10 to-blue-400/10"
           animate={{
@@ -619,7 +600,6 @@ function SkillCard({ skill, index }: { skill: any; index: number }) {
           transition={{ duration: 0.3 }}
         />
 
-        {/* 邊框發光效果 */}
         <motion.div
           className="absolute inset-0 rounded-xl"
           animate={{
@@ -670,7 +650,6 @@ function ProjectCard({ project, index }: { project: any; index: number }) {
       onHoverEnd={() => setIsHovered(false)}
     >
       <div className="relative bg-black/70 backdrop-blur-xl border border-green-400/30 rounded-xl p-6 md:p-8 h-full overflow-hidden">
-        {/* 粒子效果背景 */}
         <AnimatePresence>
           {isHovered && (
             <motion.div
@@ -988,8 +967,12 @@ function QuantumPortfolio() {
 
   useEffect(() => {
     setIsMounted(true)
-    const loadingManager = LoadingStateManager.getInstance()
-    setShowLoader(loadingManager.shouldShowLoading())
+
+    // 只在客戶端執行
+    if (typeof window !== "undefined") {
+      const loadingManager = LoadingStateManager.getInstance()
+      setShowLoader(loadingManager.shouldShowLoading())
+    }
   }, [])
 
   const handleLoadingComplete = () => {

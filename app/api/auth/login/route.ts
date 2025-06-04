@@ -1,10 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { SecurityManager } from "@/lib/security"
-import bcrypt from "bcryptjs"
 
 // 管理員憑證
 const ADMIN_EMAIL = "morex.rick@gmail.com"
-// 重新生成的密碼哈希 - 使用更簡單的方法
 const ADMIN_PASSWORD = "S126027981"
 
 export async function POST(request: NextRequest) {
@@ -41,26 +39,11 @@ export async function POST(request: NextRequest) {
 
     // 驗證管理員憑證
     const isValidEmail = email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase()
-    console.log("Email validation:", { provided: email, expected: ADMIN_EMAIL, isValid: isValidEmail })
-
-    // 直接比較密碼（臨時調試）
     const isValidPassword = password === ADMIN_PASSWORD
-    console.log("Password validation:", { provided: password, expected: ADMIN_PASSWORD, isValid: isValidPassword })
 
-    // 也嘗試 bcrypt 比較（如果有哈希值）
-    let bcryptValid = false
-    try {
-      const hashedPassword = "$2a$12$Ht5QsKYt0uKEYbRFRLTx8.t9UZQjZIyJJDCGpRwAX1OBcKTQB.Etu"
-      bcryptValid = await bcrypt.compare(password, hashedPassword)
-      console.log("Bcrypt validation:", bcryptValid)
-    } catch (error) {
-      console.error("Bcrypt error:", error)
-    }
+    console.log("Credential validation:", { isValidEmail, isValidPassword })
 
-    const isValidAdmin = isValidEmail && (isValidPassword || bcryptValid)
-    console.log("Final validation result:", { isValidEmail, isValidPassword, bcryptValid, isValidAdmin })
-
-    if (!isValidAdmin) {
+    if (!isValidEmail || !isValidPassword) {
       console.log("Invalid credentials provided")
       SecurityManager.recordLoginAttempt(clientIP, false)
 
@@ -71,14 +54,6 @@ export async function POST(request: NextRequest) {
         {
           error: "Invalid credentials",
           remainingAttempts: attemptCheck.remainingAttempts ? attemptCheck.remainingAttempts - 1 : 0,
-          debug:
-            process.env.NODE_ENV === "development"
-              ? {
-                  emailMatch: isValidEmail,
-                  passwordMatch: isValidPassword,
-                  bcryptMatch: bcryptValid,
-                }
-              : undefined,
         },
         { status: 401 },
       )
@@ -91,46 +66,56 @@ export async function POST(request: NextRequest) {
 
     // 檢查環境變量
     if (!process.env.JWT_SECRET) {
-      console.error("JWT_SECRET not found in environment variables")
-      const response = NextResponse.json({ error: "Server configuration error" }, { status: 500 })
-      return SecurityManager.setSecurityHeaders(response)
+      console.warn("JWT_SECRET not found, using fallback")
     }
 
-    // 生成 JWT 令牌
-    const token = SecurityManager.generateToken({
-      email,
-      role: "admin",
-      ip: clientIP,
-      loginTime: Date.now(),
-    })
+    try {
+      // 生成 JWT 令牌
+      const token = SecurityManager.generateToken({
+        email,
+        role: "admin",
+        ip: clientIP,
+        loginTime: Date.now(),
+      })
 
-    // 生成新的 CSRF 令牌
-    const newCSRFToken = SecurityManager.generateCSRFToken()
+      // 生成新的 CSRF 令牌
+      const newCSRFToken = SecurityManager.generateCSRFToken()
 
-    const response = NextResponse.json({
-      success: true,
-      message: "Login successful",
-      csrfToken: newCSRFToken,
-    })
+      const response = NextResponse.json({
+        success: true,
+        message: "Login successful",
+        csrfToken: newCSRFToken,
+      })
 
-    // 設置安全的 HTTP-only cookie
-    response.cookies.set("auth-token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 24 * 60 * 60, // 24 小時
-      path: "/",
-    })
+      // 設置安全的 HTTP-only cookie
+      response.cookies.set("auth-token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 24 * 60 * 60, // 24 小時
+        path: "/",
+      })
 
-    response.cookies.set("csrf-token", newCSRFToken, {
-      httpOnly: false, // 需要在客戶端訪問
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 24 * 60 * 60,
-      path: "/",
-    })
+      response.cookies.set("csrf-token", newCSRFToken, {
+        httpOnly: false, // 需要在客戶端訪問
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        maxAge: 24 * 60 * 60,
+        path: "/",
+      })
 
-    return SecurityManager.setSecurityHeaders(response)
+      return SecurityManager.setSecurityHeaders(response)
+    } catch (tokenError) {
+      console.error("Token generation error:", tokenError)
+      const response = NextResponse.json(
+        {
+          error: "Authentication system error",
+          details: process.env.NODE_ENV === "development" ? tokenError.message : undefined,
+        },
+        { status: 500 },
+      )
+      return SecurityManager.setSecurityHeaders(response)
+    }
   } catch (error) {
     console.error("Login error:", error)
     const response = NextResponse.json(

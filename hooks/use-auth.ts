@@ -128,7 +128,6 @@ export function useAuth() {
           isLoading: false,
           isAuthenticated: false,
         })
-        router.push("/login")
         return true
       }
       return false
@@ -136,7 +135,7 @@ export function useAuth() {
       console.error("Logout error:", error)
       return false
     }
-  }, [router])
+  }, [])
 
   // 需要認證的路由保護
   const requireAuth = useCallback(
@@ -152,12 +151,15 @@ export function useAuth() {
 
   // 初始化時驗證會話
   useEffect(() => {
-    verifySession()
+    // 只在客戶端執行
+    if (typeof window !== "undefined") {
+      verifySession()
+    }
   }, [verifySession])
 
   // 定期檢查會話狀態（每 5 分鐘）
   useEffect(() => {
-    if (authState.isAuthenticated) {
+    if (typeof window !== "undefined" && authState.isAuthenticated) {
       const interval = setInterval(
         () => {
           verifySession()
