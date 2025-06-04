@@ -236,6 +236,25 @@ function AdminDashboard() {
 
       console.log("🔄 Loading dashboard data...")
 
+      // First, try to initialize data if needed
+      try {
+        console.log("🔍 Checking if data initialization is needed...")
+        const initResponse = await fetch("/api/admin/init")
+        const initData = await initResponse.json()
+
+        if (!initData.success || initData.files.length === 0) {
+          console.log("📁 Data files not found, initializing...")
+          const initResult = await fetch("/api/admin/init", { method: "POST" })
+          const initResultData = await initResult.json()
+          console.log("✅ Data initialization result:", initResultData)
+        } else {
+          console.log("✅ Data files already exist:", initData.files)
+        }
+      } catch (initError) {
+        console.warn("⚠️ Data initialization check failed:", initError)
+        // Continue anyway, the individual API calls will handle initialization
+      }
+
       const [stats, articles, projects, activities] = await Promise.all([
         apiClient.getDashboardStats(),
         apiClient.getArticles(),
@@ -633,6 +652,31 @@ function AdminDashboard() {
                 <span className="text-green-300">實時數據同步</span>
               </div>
             </div>
+
+            <motion.button
+              onClick={async () => {
+                try {
+                  console.log("🔄 Manual data initialization...")
+                  const response = await fetch("/api/admin/init", { method: "POST" })
+                  const result = await response.json()
+
+                  if (result.success) {
+                    addToast("success", "數據初始化成功")
+                    await loadDashboardData()
+                  } else {
+                    addToast("error", "數據初始化失敗")
+                  }
+                } catch (error) {
+                  console.error("❌ Manual init failed:", error)
+                  addToast("error", "初始化過程中發生錯誤")
+                }
+              }}
+              className="w-full mt-3 px-3 py-2 bg-blue-400/20 text-blue-300 rounded border border-blue-400/30 hover:bg-blue-400 hover:text-black transition-colors text-xs"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              🔧 重新初始化數據
+            </motion.button>
           </div>
         </div>
 

@@ -1,23 +1,51 @@
 import { NextResponse } from "next/server"
-import { getProjects, createProject } from "@/lib/db-service"
+import { getProjects, createProject, initializeDataFiles } from "@/lib/db-service"
 
 export async function GET() {
   try {
+    console.log("🚀 GET /api/admin/projects - Fetching projects...")
+
+    // Ensure data files are initialized
+    await initializeDataFiles()
+
     const projects = await getProjects()
+    console.log(`✅ Fetched ${projects.length} projects successfully`)
+
     return NextResponse.json(projects)
   } catch (error) {
-    console.error("Error fetching projects:", error)
-    return NextResponse.json({ error: "Failed to fetch projects" }, { status: 500 })
+    console.error("❌ Error fetching projects:", error)
+    return NextResponse.json(
+      {
+        error: "Failed to fetch projects",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }
 
 export async function POST(request: Request) {
   try {
+    console.log("🚀 POST /api/admin/projects - Creating project...")
+
     const projectData = await request.json()
+    console.log("📋 Project data:", projectData)
+
+    // Ensure data files are initialized
+    await initializeDataFiles()
+
     const newProject = await createProject(projectData)
+    console.log("✅ Project created successfully:", newProject)
+
     return NextResponse.json(newProject, { status: 201 })
   } catch (error) {
-    console.error("Error creating project:", error)
-    return NextResponse.json({ error: "Failed to create project" }, { status: 500 })
+    console.error("❌ Error creating project:", error)
+    return NextResponse.json(
+      {
+        error: "Failed to create project",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 },
+    )
   }
 }
