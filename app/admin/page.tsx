@@ -4,23 +4,69 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { useAuth } from "@/hooks/use-auth"
+import { fetchDashboardData, clearSecurityAlerts, updateSystemSettings } from "@/app/actions/admin-actions"
+import { DashboardStats } from "@/components/admin/dashboard-stats"
+import { ActivityFeed } from "@/components/admin/activity-feed"
+import { ArticleManager } from "@/components/admin/article-manager"
+import type { SystemStat, Article, Project, Activity } from "@/lib/db-service"
+
+interface DashboardData {
+  stats: SystemStat
+  articles: Article[]
+  projects: Project[]
+  activities: Activity[]
+}
 
 // 管理面板組件
 function AdminDashboard() {
   const { user, logout } = useAuth()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState("dashboard")
-  const [stats, setStats] = useState({
-    totalViews: "125.6K",
-    totalArticles: "42",
-    totalProjects: "18",
-    securityAlerts: "0",
-  })
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Load dashboard data
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true)
+        const result = await fetchDashboardData()
+
+        if (result.error) {
+          setError(result.error)
+        } else {
+          setDashboardData(result as DashboardData)
+        }
+      } catch (err) {
+        console.error("Error loading dashboard data:", err)
+        setError("Failed to load dashboard data")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+  }, [])
 
   const handleLogout = async () => {
     const success = await logout()
     if (success) {
       router.push("/login")
+    }
+  }
+
+  const handleClearAlerts = async () => {
+    try {
+      const result = await clearSecurityAlerts()
+      if (result.success && dashboardData) {
+        setDashboardData({
+          ...dashboardData,
+          stats: { ...dashboardData.stats, securityAlerts: 0 },
+        })
+      }
+    } catch (error) {
+      console.error("Error clearing alerts:", error)
     }
   }
 
@@ -31,6 +77,37 @@ function AdminDashboard() {
     { id: "security", label: "安全監控", icon: "🔒" },
     { id: "settings", label: "系統設置", icon: "⚙️" },
   ]
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-green-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-green-400 font-mono">載入儀表板數據中...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !dashboardData) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h1 className="text-3xl font-bold text-red-400 mb-4">載入失敗</h1>
+          <p className="text-gray-400 mb-6">{error || "無法載入儀表板數據"}</p>
+          <motion.button
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-gradient-to-r from-red-400 to-red-600 text-white font-bold rounded-lg"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            重新載入
+          </motion.button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -162,67 +239,8 @@ function AdminDashboard() {
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                <h2 className="text-3xl font-bold text-green-400 mb-6">儀表板總覽</h2>
-
-                {/* 統計卡片 */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                  {[
-                    { title: "總瀏覽量", value: stats.totalViews, icon: "👁️", color: "blue" },
-                    { title: "文章數量", value: stats.totalArticles, icon: "📝", color: "green" },
-                    { title: "專案數量", value: stats.totalProjects, icon: "🚀", color: "purple" },
-                    { title: "安全警報", value: stats.securityAlerts, icon: "🔒", color: "red" },
-                  ].map((stat, index) => (
-                    <motion.div
-                      key={stat.title}
-                      className={`bg-black/60 backdrop-blur-xl border border-${stat.color}-400/30 rounded-xl p-6`}
-                      initial={{ opacity: 0, y: 50 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.6, delay: index * 0.1 }}
-                    >
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-2xl">{stat.icon}</span>
-                        <span className={`text-${stat.color}-400 text-sm`}>實時</span>
-                      </div>
-                      <div className={`text-3xl font-bold text-${stat.color}-400 mb-2`}>{stat.value}</div>
-                      <div className={`text-${stat.color}-300 text-sm`}>{stat.title}</div>
-                    </motion.div>
-                  ))}
-                </div>
-
-                {/* 最近活動 */}
-                <div className="bg-black/60 backdrop-blur-xl border border-green-400/30 rounded-xl p-6">
-                  <h3 className="text-xl font-bold text-green-400 mb-4">最近活動</h3>
-                  <div className="space-y-4">
-                    {[
-                      { time: "2 分鐘前", action: "新用戶訪問了首頁", type: "info" },
-                      { time: "15 分鐘前", action: "WriteUp 文章被瀏覽", type: "success" },
-                      { time: "1 小時前", action: "管理員登錄成功", type: "warning" },
-                      { time: "3 小時前", action: "系統自動備份完成", type: "info" },
-                    ].map((activity, index) => (
-                      <motion.div
-                        key={index}
-                        className="flex items-center gap-4 p-3 bg-gray-800/30 rounded-lg"
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.4, delay: index * 0.1 }}
-                      >
-                        <div
-                          className={`w-3 h-3 rounded-full ${
-                            activity.type === "success"
-                              ? "bg-green-400"
-                              : activity.type === "warning"
-                                ? "bg-yellow-400"
-                                : "bg-blue-400"
-                          }`}
-                        ></div>
-                        <div className="flex-1">
-                          <div className="text-green-200">{activity.action}</div>
-                          <div className="text-gray-400 text-sm">{activity.time}</div>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
+                <DashboardStats initialStats={dashboardData.stats} />
+                <ActivityFeed initialActivities={dashboardData.activities} />
               </motion.div>
             )}
 
@@ -234,82 +252,7 @@ function AdminDashboard() {
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-3xl font-bold text-green-400">文章管理</h2>
-                  <motion.button
-                    className="px-6 py-3 bg-gradient-to-r from-green-400 to-blue-400 text-black font-bold rounded-lg"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    ➕ 新增文章
-                  </motion.button>
-                </div>
-
-                <div className="bg-black/60 backdrop-blur-xl border border-green-400/30 rounded-xl p-6">
-                  <div className="space-y-4">
-                    {[
-                      {
-                        title: "Advanced SQL Injection in Modern Web Applications",
-                        status: "已發布",
-                        views: "12.5K",
-                        date: "2024-01-15",
-                      },
-                      {
-                        title: "Quantum Cryptography Implementation",
-                        status: "草稿",
-                        views: "8.7K",
-                        date: "2024-01-10",
-                      },
-                      {
-                        title: "AI-Powered Malware Analysis",
-                        status: "已發布",
-                        views: "15.2K",
-                        date: "2024-01-08",
-                      },
-                    ].map((article, index) => (
-                      <motion.div
-                        key={index}
-                        className="flex items-center justify-between p-4 bg-gray-800/30 rounded-lg hover:bg-gray-800/50 transition-colors"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, delay: index * 0.1 }}
-                      >
-                        <div className="flex-1">
-                          <h3 className="text-green-300 font-bold">{article.title}</h3>
-                          <div className="flex items-center gap-4 mt-2 text-sm text-gray-400">
-                            <span>📅 {article.date}</span>
-                            <span>👁️ {article.views}</span>
-                            <span
-                              className={`px-2 py-1 rounded ${
-                                article.status === "已發布"
-                                  ? "bg-green-400/20 text-green-300"
-                                  : "bg-yellow-400/20 text-yellow-300"
-                              }`}
-                            >
-                              {article.status}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <motion.button
-                            className="px-3 py-2 bg-blue-400/20 text-blue-300 rounded border border-blue-400/30 hover:bg-blue-400 hover:text-black transition-colors"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            編輯
-                          </motion.button>
-                          <motion.button
-                            className="px-3 py-2 bg-red-400/20 text-red-300 rounded border border-red-400/30 hover:bg-red-400 hover:text-black transition-colors"
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            刪除
-                          </motion.button>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
+                <ArticleManager initialArticles={dashboardData.articles} />
               </motion.div>
             )}
 
@@ -333,19 +276,16 @@ function AdminDashboard() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[
-                    { name: "QuantumUI Framework", status: "開發中", progress: 75 },
-                    { name: "NeuralStack Backend", status: "已完成", progress: 100 },
-                    { name: "SecureVault Crypto", status: "測試中", progress: 90 },
-                  ].map((project, index) => (
+                  {dashboardData.projects.map((project, index) => (
                     <motion.div
-                      key={index}
+                      key={project.id}
                       className="bg-black/60 backdrop-blur-xl border border-purple-400/30 rounded-xl p-6"
                       initial={{ opacity: 0, y: 50 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.6, delay: index * 0.1 }}
                     >
                       <h3 className="text-purple-400 font-bold mb-2">{project.name}</h3>
+                      <p className="text-purple-200 text-sm mb-4">{project.description}</p>
                       <div className="mb-4">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-purple-300 text-sm">{project.status}</span>
@@ -390,7 +330,19 @@ function AdminDashboard() {
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.3 }}
               >
-                <h2 className="text-3xl font-bold text-green-400 mb-6">安全監控</h2>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-3xl font-bold text-green-400">安全監控</h2>
+                  {dashboardData.stats.securityAlerts > 0 && (
+                    <motion.button
+                      onClick={handleClearAlerts}
+                      className="px-4 py-2 bg-red-400/20 text-red-300 rounded-lg border border-red-400/30 hover:bg-red-400 hover:text-black transition-all duration-300"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      清除警報
+                    </motion.button>
+                  )}
+                </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* 登錄嘗試 */}
@@ -468,11 +420,12 @@ function AdminDashboard() {
                   {/* 基本設置 */}
                   <div className="bg-black/60 backdrop-blur-xl border border-blue-400/30 rounded-xl p-6">
                     <h3 className="text-blue-400 font-bold mb-4">⚙️ 基本設置</h3>
-                    <div className="space-y-4">
+                    <form action={updateSystemSettings} className="space-y-4">
                       <div>
                         <label className="block text-blue-300 mb-2">網站標題</label>
                         <input
                           type="text"
+                          name="siteTitle"
                           defaultValue="Syan - Red Team Exercise & Developer"
                           className="w-full px-4 py-2 bg-black/60 border border-blue-400/30 rounded-lg text-blue-100 focus:outline-none focus:border-blue-400/60"
                         />
@@ -480,11 +433,20 @@ function AdminDashboard() {
                       <div>
                         <label className="block text-blue-300 mb-2">網站描述</label>
                         <textarea
+                          name="siteDescription"
                           defaultValue="自由の奴隷"
                           className="w-full px-4 py-2 bg-black/60 border border-blue-400/30 rounded-lg text-blue-100 focus:outline-none focus:border-blue-400/60 h-20 resize-none"
                         />
                       </div>
-                    </div>
+                      <motion.button
+                        type="submit"
+                        className="px-6 py-3 bg-gradient-to-r from-blue-400 to-purple-400 text-black font-bold rounded-lg"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        💾 保存設置
+                      </motion.button>
+                    </form>
                   </div>
 
                   {/* 安全設置 */}
@@ -515,17 +477,6 @@ function AdminDashboard() {
                         </div>
                       </div>
                     </div>
-                  </div>
-
-                  {/* 保存按鈕 */}
-                  <div className="flex justify-end">
-                    <motion.button
-                      className="px-8 py-3 bg-gradient-to-r from-green-400 to-blue-400 text-black font-bold rounded-lg"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      💾 保存設置
-                    </motion.button>
                   </div>
                 </div>
               </motion.div>
