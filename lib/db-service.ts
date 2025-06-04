@@ -30,7 +30,6 @@ export interface Project {
 
 export interface SystemStat {
   totalViews: number
-  totalViews: number
   totalArticles: number
   totalProjects: number
   securityAlerts: number
@@ -73,7 +72,7 @@ async function ensureDataDir() {
 }
 
 // Initialize data files if they don't exist
-async function initializeDataFiles() {
+export async function initializeDataFiles() {
   await ensureDataDir()
 
   // Initialize articles
@@ -233,8 +232,6 @@ async function initializeDataFiles() {
   }
 }
 
-// Remove the automatic initialization call at module level
-
 // Read data from files
 async function readData<T>(filePath: string): Promise<T[]> {
   try {
@@ -264,13 +261,11 @@ export async function getArticles(): Promise<Article[]> {
 }
 
 export async function getArticleById(id: string): Promise<Article | null> {
-  await initializeDataFiles()
   const articles = await getArticles()
   return articles.find((article) => article.id === id) || null
 }
 
 export async function createArticle(article: Omit<Article, "id">): Promise<Article> {
-  await initializeDataFiles()
   const articles = await getArticles()
   const newArticle: Article = {
     ...article,
@@ -282,7 +277,6 @@ export async function createArticle(article: Omit<Article, "id">): Promise<Artic
 }
 
 export async function updateArticle(id: string, updates: Partial<Article>): Promise<Article | null> {
-  await initializeDataFiles()
   const articles = await getArticles()
   const index = articles.findIndex((article) => article.id === id)
   if (index === -1) return null
@@ -293,7 +287,6 @@ export async function updateArticle(id: string, updates: Partial<Article>): Prom
 }
 
 export async function deleteArticle(id: string): Promise<boolean> {
-  await initializeDataFiles()
   const articles = await getArticles()
   const filteredArticles = articles.filter((article) => article.id !== id)
   if (filteredArticles.length === articles.length) return false
@@ -308,13 +301,11 @@ export async function getProjects(): Promise<Project[]> {
 }
 
 export async function getProjectById(id: string): Promise<Project | null> {
-  await initializeDataFiles()
   const projects = await getProjects()
   return projects.find((project) => project.id === id) || null
 }
 
 export async function createProject(project: Omit<Project, "id">): Promise<Project> {
-  await initializeDataFiles()
   const projects = await getProjects()
   const newProject: Project = {
     ...project,
@@ -326,7 +317,6 @@ export async function createProject(project: Omit<Project, "id">): Promise<Proje
 }
 
 export async function updateProject(id: string, updates: Partial<Project>): Promise<Project | null> {
-  await initializeDataFiles()
   const projects = await getProjects()
   const index = projects.findIndex((project) => project.id === id)
   if (index === -1) return null
@@ -337,7 +327,6 @@ export async function updateProject(id: string, updates: Partial<Project>): Prom
 }
 
 export async function deleteProject(id: string): Promise<boolean> {
-  await initializeDataFiles()
   const projects = await getProjects()
   const filteredProjects = projects.filter((project) => project.id !== id)
   if (filteredProjects.length === projects.length) return false
@@ -364,7 +353,6 @@ export async function getStats(): Promise<SystemStat> {
 }
 
 export async function updateStats(updates: Partial<SystemStat>): Promise<SystemStat> {
-  await initializeDataFiles()
   const stats = await getStats()
   const updatedStats = {
     ...stats,
@@ -389,7 +377,6 @@ export async function getActivities(limit = 10): Promise<Activity[]> {
 }
 
 export async function addActivity(activity: Omit<Activity, "id">): Promise<Activity> {
-  await initializeDataFiles()
   const activities = await readData<Activity>(ACTIVITIES_FILE)
   const newActivity: Activity = {
     ...activity,
@@ -415,7 +402,6 @@ export async function getLoginAttempts(limit = 10): Promise<LoginAttempt[]> {
 }
 
 export async function addLoginAttempt(attempt: Omit<LoginAttempt, "id">): Promise<LoginAttempt> {
-  await initializeDataFiles()
   const attempts = await readData<LoginAttempt>(LOGIN_ATTEMPTS_FILE)
   const newAttempt: LoginAttempt = {
     ...attempt,
@@ -434,6 +420,3 @@ export async function addLoginAttempt(attempt: Omit<LoginAttempt, "id">): Promis
 
   return newAttempt
 }
-
-// Export the initialization function
-export { initializeDataFiles }
