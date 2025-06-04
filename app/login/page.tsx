@@ -285,6 +285,47 @@ export default function LoginPage() {
                   "🚀 安全登錄"
                 )}
               </motion.button>
+              {process.env.NODE_ENV === "development" && (
+                <motion.button
+                  type="button"
+                  onClick={async () => {
+                    setLoginState((prev) => ({ ...prev, isLoading: true, error: "" }))
+
+                    try {
+                      const response = await fetch("/api/auth/simple-login", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          email: "morex.rick@gmail.com",
+                          password: "S126027981",
+                        }),
+                      })
+
+                      const data = await response.json()
+
+                      if (response.ok) {
+                        router.push("/admin")
+                      } else {
+                        setLoginState((prev) => ({
+                          ...prev,
+                          isLoading: false,
+                          error: data.error + (data.debug ? ` (Debug: ${JSON.stringify(data.debug)})` : ""),
+                        }))
+                      }
+                    } catch (error) {
+                      setLoginState((prev) => ({
+                        ...prev,
+                        isLoading: false,
+                        error: "測試登錄失敗: " + error.message,
+                      }))
+                    }
+                  }}
+                  className="w-full mt-4 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-800 text-white font-bold rounded-lg font-mono hover:from-blue-500 hover:to-blue-700 transition-all duration-300"
+                  disabled={loginState.isLoading}
+                >
+                  🧪 測試登錄 (開發模式)
+                </motion.button>
+              )}
             </form>
 
             {/* 安全資訊 */}

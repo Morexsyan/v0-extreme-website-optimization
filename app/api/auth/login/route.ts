@@ -2,18 +2,20 @@ import { type NextRequest, NextResponse } from "next/server"
 import { SecurityManager } from "@/lib/security"
 import bcrypt from "bcryptjs"
 
-// 管理員憑證（從環境變量讀取）
+// 管理員憑證
 const ADMIN_EMAIL = "morex.rick@gmail.com"
-// 使用bcrypt生成的S126027981的哈希值
-const ADMIN_PASSWORD_HASH = "$2a$12$Ht5QsKYt0uKEYbRFRLTx8.t9UZQjZIyJJDCGpRwAX1OBcKTQB.Etu"
+// 重新生成的密碼哈希 - 使用更簡單的方法
+const ADMIN_PASSWORD = "S126027981"
 
 export async function POST(request: NextRequest) {
   try {
     const clientIP = SecurityManager.getClientIP(request)
+    console.log("Login attempt from IP:", clientIP)
 
     // 檢查登錄嘗試限制
     const attemptCheck = SecurityManager.checkLoginAttempts(clientIP)
     if (!attemptCheck.allowed) {
+      console.log("Login blocked due to too many attempts")
       const response = NextResponse.json(
         {
           error: "Too many login attempts. Please try again later.",
@@ -24,21 +26,42 @@ export async function POST(request: NextRequest) {
       return SecurityManager.setSecurityHeaders(response)
     }
 
-    const { email, password, csrfToken } = await request.json()
+    const body = await request.json()
+    const { email, password } = body
+
+    console.log("Login attempt:", { email, passwordLength: password?.length })
 
     // 輸入驗證
     if (!email || !password) {
+      console.log("Missing email or password")
       SecurityManager.recordLoginAttempt(clientIP, false)
       const response = NextResponse.json({ error: "Email and password are required" }, { status: 400 })
       return SecurityManager.setSecurityHeaders(response)
     }
 
     // 驗證管理員憑證
-    const isValidEmail = email === ADMIN_EMAIL
-    const isValidPassword = isValidEmail ? await bcrypt.compare(password, ADMIN_PASSWORD_HASH) : false
-    const isValidAdmin = isValidEmail && isValidPassword
+    const isValidEmail = email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase()
+    console.log("Email validation:", { provided: email, expected: ADMIN_EMAIL, isValid: isValidEmail })
+
+    // 直接比較密碼（臨時調試）
+    const isValidPassword = password === ADMIN_PASSWORD
+    console.log("Password validation:", { provided: password, expected: ADMIN_PASSWORD, isValid: isValidPassword })
+
+    // 也嘗試 bcrypt 比較（如果有哈希值）
+    let bcryptValid = false
+    try {
+      const hashedPassword = "$2a$12$Ht5QsKYt0uKEYbRFRLTx8.t9UZQjZIyJJDCGpRwAX1OBcKTQB.Etu"
+      bcryptValid = await bcrypt.compare(password, hashedPassword)
+      console.log("Bcrypt validation:", bcryptValid)
+    } catch (error) {
+      console.error("Bcrypt error:", error)
+    }
+
+    const isValidAdmin = isValidEmail && (isValidPassword || bcryptValid)
+    console.log("Final validation result:", { isValidEmail, isValidPassword, bcryptValid, isValidAdmin })
 
     if (!isValidAdmin) {
+      console.log("Invalid credentials provided")
       SecurityManager.recordLoginAttempt(clientIP, false)
 
       // 添加延遲以防止時序攻擊
@@ -48,6 +71,14 @@ export async function POST(request: NextRequest) {
         {
           error: "Invalid credentials",
           remainingAttempts: attemptCheck.remainingAttempts ? attemptCheck.remainingAttempts - 1 : 0,
+          debug:
+            process.env.NODE_ENV === "development"
+              ? {
+                  emailMatch: isValidEmail,
+                  passwordMatch: isValidPassword,
+                  bcryptMatch: bcryptValid,
+                }
+              : undefined,
         },
         { status: 401 },
       )
@@ -55,7 +86,15 @@ export async function POST(request: NextRequest) {
     }
 
     // 成功登錄
+    console.log("Login successful")
     SecurityManager.recordLoginAttempt(clientIP, true)
+
+    // 檢查環境變量
+    if (!process.env.JWT_SECRET) {
+      console.error("JWT_SECRET not found in environment variables")
+      const response = NextResponse.json({ error: "Server configuration error" }, { status: 500 })
+      return SecurityManager.setSecurityHeaders(response)
+    }
 
     // 生成 JWT 令牌
     const token = SecurityManager.generateToken({
@@ -94,7 +133,13 @@ export async function POST(request: NextRequest) {
     return SecurityManager.setSecurityHeaders(response)
   } catch (error) {
     console.error("Login error:", error)
-    const response = NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    const response = NextResponse.json(
+      {
+        error: "Internal server error",
+        details: process.env.NODE_ENV === "development" ? error.message : undefined,
+      },
+      { status: 500 },
+    )
     return SecurityManager.setSecurityHeaders(response)
   }
 }
