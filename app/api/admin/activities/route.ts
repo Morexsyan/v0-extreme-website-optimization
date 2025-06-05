@@ -1,22 +1,21 @@
 import { NextResponse } from "next/server"
-import { getActivities, addActivity, initializeDatabase } from "@/lib/memory-db-service"
+import { getActivities, addActivity, initializeDatabase } from "@/lib/fs-db-service"
 
 export async function GET(request: Request) {
   try {
-    console.log("📊 GET /api/admin/activities - Fetching activities...")
+    console.log("📋 GET /api/admin/activities - Starting...")
 
     const { searchParams } = new URL(request.url)
     const limit = Number.parseInt(searchParams.get("limit") || "10", 10)
 
-    // Ensure database is initialized
     await initializeDatabase()
 
     const activities = await getActivities(limit)
-    console.log(`✅ Fetched ${activities.length} activities successfully`)
+    console.log(`✅ GET /api/admin/activities - Success: ${activities.length} activities`)
 
     return NextResponse.json(activities)
   } catch (error) {
-    console.error("❌ Error fetching activities:", error)
+    console.error("❌ GET /api/admin/activities - Error:", error)
     return NextResponse.json(
       {
         error: "Failed to fetch activities",
@@ -29,24 +28,19 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    console.log("📊 POST /api/admin/activities - Creating activity...")
+    console.log("📋 POST /api/admin/activities - Starting...")
 
     const activityData = await request.json()
-    console.log("📋 Activity data:", activityData)
+    console.log("📄 Activity data received:", activityData)
 
-    // Ensure database is initialized
     await initializeDatabase()
 
-    const newActivity = await addActivity({
-      ...activityData,
-      time: activityData.time || new Date().toISOString(),
-    })
-
-    console.log("✅ Activity created successfully:", newActivity)
+    const newActivity = await addActivity(activityData)
+    console.log("✅ POST /api/admin/activities - Success:", newActivity.id)
 
     return NextResponse.json(newActivity, { status: 201 })
   } catch (error) {
-    console.error("❌ Error creating activity:", error)
+    console.error("❌ POST /api/admin/activities - Error:", error)
     return NextResponse.json(
       {
         error: "Failed to create activity",

@@ -1,19 +1,18 @@
 import { NextResponse } from "next/server"
-import { getProjects, createProject, initializeDatabase } from "@/lib/memory-db-service"
+import { getProjects, createProject, initializeDatabase } from "@/lib/fs-db-service"
 
 export async function GET() {
   try {
-    console.log("🚀 GET /api/admin/projects - Fetching projects...")
+    console.log("🚀 GET /api/admin/projects - Starting...")
 
-    // Ensure database is initialized
     await initializeDatabase()
 
     const projects = await getProjects()
-    console.log(`✅ Fetched ${projects.length} projects successfully`)
+    console.log(`✅ GET /api/admin/projects - Success: ${projects.length} projects`)
 
     return NextResponse.json(projects)
   } catch (error) {
-    console.error("❌ Error fetching projects:", error)
+    console.error("❌ GET /api/admin/projects - Error:", error)
     return NextResponse.json(
       {
         error: "Failed to fetch projects",
@@ -26,20 +25,19 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    console.log("🚀 POST /api/admin/projects - Creating project...")
+    console.log("🚀 POST /api/admin/projects - Starting...")
 
     const projectData = await request.json()
-    console.log("📋 Project data:", projectData)
+    console.log("📄 Project data received:", projectData)
 
-    // Ensure database is initialized
     await initializeDatabase()
 
     const newProject = await createProject(projectData)
-    console.log("✅ Project created successfully:", newProject)
+    console.log("✅ POST /api/admin/projects - Success:", newProject.id)
 
     return NextResponse.json(newProject, { status: 201 })
   } catch (error) {
-    console.error("❌ Error creating project:", error)
+    console.error("❌ POST /api/admin/projects - Error:", error)
     return NextResponse.json(
       {
         error: "Failed to create project",

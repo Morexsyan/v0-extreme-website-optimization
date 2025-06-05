@@ -1,23 +1,24 @@
 import { NextResponse } from "next/server"
-import { getArticles, createArticle, initializeDatabase } from "@/lib/memory-db-service"
+import { getArticles, createArticle, initializeDatabase } from "@/lib/fs-db-service"
 
 export async function GET() {
   try {
-    console.log("📝 GET /api/admin/articles - Fetching articles...")
+    console.log("📝 GET /api/admin/articles - Starting...")
 
-    // Ensure database is initialized
+    // 確保數據庫已初始化
     await initializeDatabase()
 
     const articles = await getArticles()
-    console.log(`✅ Fetched ${articles.length} articles successfully`)
+    console.log(`✅ GET /api/admin/articles - Success: ${articles.length} articles`)
 
     return NextResponse.json(articles)
   } catch (error) {
-    console.error("❌ Error fetching articles:", error)
+    console.error("❌ GET /api/admin/articles - Error:", error)
     return NextResponse.json(
       {
         error: "Failed to fetch articles",
         details: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString(),
       },
       { status: 500 },
     )
@@ -26,15 +27,19 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    console.log("📝 POST /api/admin/articles - Creating article...")
+    console.log("📝 POST /api/admin/articles - Starting...")
 
     const articleData = await request.json()
-    console.log("📄 Article data:", articleData)
+    console.log("📄 Article data received:", {
+      title: articleData.title,
+      status: articleData.status,
+      category: articleData.category,
+    })
 
-    // Ensure database is initialized
+    // 確保數據庫已初始化
     await initializeDatabase()
 
-    // Add required fields
+    // 添加必需字段
     const newArticleData = {
       ...articleData,
       views: 0,
@@ -44,15 +49,19 @@ export async function POST(request: Request) {
     }
 
     const newArticle = await createArticle(newArticleData)
-    console.log("✅ Article created successfully:", newArticle)
+    console.log("✅ POST /api/admin/articles - Success:", {
+      id: newArticle.id,
+      title: newArticle.title,
+    })
 
     return NextResponse.json(newArticle, { status: 201 })
   } catch (error) {
-    console.error("❌ Error creating article:", error)
+    console.error("❌ POST /api/admin/articles - Error:", error)
     return NextResponse.json(
       {
         error: "Failed to create article",
         details: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString(),
       },
       { status: 500 },
     )
