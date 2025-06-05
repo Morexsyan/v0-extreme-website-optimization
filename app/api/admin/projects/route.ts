@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getProjects, createProject, initializeDatabase } from "@/lib/fs-db-service"
+import { getProjects, createProject, initializeDatabase } from "@/lib/memory-db-service"
 
 export async function GET() {
   try {

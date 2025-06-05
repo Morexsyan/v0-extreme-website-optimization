@@ -1,6 +1,7 @@
+// 基於內存的數據庫服務
 import { v4 as uuidv4 } from "uuid"
 
-// Define data types
+// 定義數據類型
 export interface Article {
   id: string
   title: string
@@ -51,40 +52,50 @@ export interface LoginAttempt {
   details?: string
 }
 
-// In-memory database
-class MemoryDatabase {
-  private static instance: MemoryDatabase
-  private articles: Article[] = []
-  private projects: Project[] = []
-  private stats: SystemStat = {
-    totalViews: 0,
-    totalArticles: 0,
-    totalProjects: 0,
-    securityAlerts: 0,
-    lastUpdated: new Date().toISOString(),
+// 內存數據存儲
+// 使用 global 對象來存儲數據，這樣在 Next.js 的 API 路由中數據可以在請求之間保持
+declare global {
+  var __memoryDb: {
+    articles: Article[]
+    projects: Project[]
+    stats: SystemStat
+    activities: Activity[]
+    loginAttempts: LoginAttempt[]
+    initialized: boolean
   }
-  private activities: Activity[] = []
-  private loginAttempts: LoginAttempt[] = []
-  private initialized = false
+}
 
-  private constructor() {}
+// 初始化全局數據存儲
+if (!global.__memoryDb) {
+  global.__memoryDb = {
+    articles: [],
+    projects: [],
+    stats: {
+      totalViews: 0,
+      totalArticles: 0,
+      totalProjects: 0,
+      securityAlerts: 0,
+      lastUpdated: new Date().toISOString(),
+    },
+    activities: [],
+    loginAttempts: [],
+    initialized: false,
+  }
+}
 
-  public static getInstance(): MemoryDatabase {
-    if (!MemoryDatabase.instance) {
-      MemoryDatabase.instance = new MemoryDatabase()
-    }
-    return MemoryDatabase.instance
+// 初始化數據庫
+export async function initializeDatabase(): Promise<void> {
+  console.log("🔄 Initializing memory database...")
+
+  // 如果已經初始化過，則跳過
+  if (global.__memoryDb.initialized) {
+    console.log("✅ Memory database already initialized")
+    return
   }
 
-  public async initialize() {
-    if (this.initialized) {
-      return
-    }
-
-    console.log("🔄 Initializing in-memory database...")
-
-    // Initialize articles
-    this.articles = [
+  // 初始化文章數據
+  if (global.__memoryDb.articles.length === 0) {
+    global.__memoryDb.articles = [
       {
         id: uuidv4(),
         title: "Advanced SQL Injection in Modern Web Applications",
@@ -93,6 +104,7 @@ class MemoryDatabase {
         likes: 892,
         date: "2024-01-15",
         excerpt: "深入分析現代 Web 應用程式中的高級 SQL 注入技術，包括 WAF 繞過、盲注技巧和自動化工具開發。",
+        content: "這是一篇關於高級 SQL 注入技術的詳細文章...",
         author: "Syan",
         category: "Web Security",
       },
@@ -104,6 +116,7 @@ class MemoryDatabase {
         likes: 654,
         date: "2024-01-10",
         excerpt: "實現量子密碼學協議，探討量子金鑰分發和後量子密碼學的實際應用。",
+        content: "量子密碼學是未來信息安全的重要方向...",
         author: "Syan",
         category: "Cryptography",
       },
@@ -115,13 +128,17 @@ class MemoryDatabase {
         likes: 1024,
         date: "2024-01-08",
         excerpt: "使用機器學習和深度學習技術自動化惡意軟體分析流程，提高檢測效率和準確性。",
+        content: "人工智能在惡意軟體分析中的應用越來越廣泛...",
         author: "Syan",
         category: "Malware Analysis",
       },
     ]
+    console.log("📝 Initialized articles data")
+  }
 
-    // Initialize projects
-    this.projects = [
+  // 初始化項目數據
+  if (global.__memoryDb.projects.length === 0) {
+    global.__memoryDb.projects = [
       {
         id: uuidv4(),
         name: "QuantumUI Framework",
@@ -151,46 +168,41 @@ class MemoryDatabase {
         startDate: "2023-11-05",
       },
     ]
+    console.log("🚀 Initialized projects data")
+  }
 
-    // Initialize stats
-    this.stats = {
-      totalViews: 125600,
-      totalArticles: 42,
-      totalProjects: 18,
-      securityAlerts: 0,
-      lastUpdated: new Date().toISOString(),
-    }
+  // 初始化統計數據
+  global.__memoryDb.stats = {
+    totalViews: 125600,
+    totalArticles: global.__memoryDb.articles.length,
+    totalProjects: global.__memoryDb.projects.length,
+    securityAlerts: 0,
+    lastUpdated: new Date().toISOString(),
+  }
+  console.log("📊 Initialized stats data")
 
-    // Initialize activities
-    this.activities = [
+  // 初始化活動數據
+  if (global.__memoryDb.activities.length === 0) {
+    global.__memoryDb.activities = [
       {
         id: uuidv4(),
-        action: "新用戶訪問了首頁",
-        time: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
-        type: "info",
-      },
-      {
-        id: uuidv4(),
-        action: "WriteUp 文章被瀏覽",
-        time: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
+        action: "系統初始化完成",
+        time: new Date().toISOString(),
         type: "success",
       },
       {
         id: uuidv4(),
-        action: "管理員登錄成功",
-        time: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-        type: "warning",
-      },
-      {
-        id: uuidv4(),
-        action: "系統自動備份完成",
-        time: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
+        action: "內存數據庫創建成功",
+        time: new Date(Date.now() - 2 * 60 * 1000).toISOString(),
         type: "info",
       },
     ]
+    console.log("📋 Initialized activities data")
+  }
 
-    // Initialize login attempts
-    this.loginAttempts = [
+  // 初始化登錄嘗試數據
+  if (global.__memoryDb.loginAttempts.length === 0) {
+    global.__memoryDb.loginAttempts = [
       {
         id: uuidv4(),
         ip: "192.168.1.100",
@@ -198,235 +210,301 @@ class MemoryDatabase {
         status: "success",
         location: "台灣",
       },
-      {
-        id: uuidv4(),
-        ip: "10.0.0.1",
-        time: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-        status: "failure",
-        location: "未知",
-      },
-      {
-        id: uuidv4(),
-        ip: "192.168.1.100",
-        time: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
-        status: "success",
-        location: "台灣",
-      },
     ]
-
-    this.initialized = true
-    console.log("✅ In-memory database initialized successfully!")
+    console.log("🔐 Initialized login attempts data")
   }
 
-  // Articles CRUD operations
-  public async getArticles(): Promise<Article[]> {
-    await this.initialize()
-    return [...this.articles]
-  }
-
-  public async getArticleById(id: string): Promise<Article | null> {
-    await this.initialize()
-    return this.articles.find((article) => article.id === id) || null
-  }
-
-  public async createArticle(article: Omit<Article, "id">): Promise<Article> {
-    await this.initialize()
-    const newArticle: Article = {
-      ...article,
-      id: uuidv4(),
-    }
-    this.articles.push(newArticle)
-    return newArticle
-  }
-
-  public async updateArticle(id: string, updates: Partial<Article>): Promise<Article | null> {
-    await this.initialize()
-    const index = this.articles.findIndex((article) => article.id === id)
-    if (index === -1) return null
-
-    this.articles[index] = { ...this.articles[index], ...updates }
-    return this.articles[index]
-  }
-
-  public async deleteArticle(id: string): Promise<boolean> {
-    await this.initialize()
-    const initialLength = this.articles.length
-    this.articles = this.articles.filter((article) => article.id !== id)
-    return this.articles.length !== initialLength
-  }
-
-  // Projects CRUD operations
-  public async getProjects(): Promise<Project[]> {
-    await this.initialize()
-    return [...this.projects]
-  }
-
-  public async getProjectById(id: string): Promise<Project | null> {
-    await this.initialize()
-    return this.projects.find((project) => project.id === id) || null
-  }
-
-  public async createProject(project: Omit<Project, "id">): Promise<Project> {
-    await this.initialize()
-    const newProject: Project = {
-      ...project,
-      id: uuidv4(),
-    }
-    this.projects.push(newProject)
-    return newProject
-  }
-
-  public async updateProject(id: string, updates: Partial<Project>): Promise<Project | null> {
-    await this.initialize()
-    const index = this.projects.findIndex((project) => project.id === id)
-    if (index === -1) return null
-
-    this.projects[index] = { ...this.projects[index], ...updates }
-    return this.projects[index]
-  }
-
-  public async deleteProject(id: string): Promise<boolean> {
-    await this.initialize()
-    const initialLength = this.projects.length
-    this.projects = this.projects.filter((project) => project.id !== id)
-    return this.projects.length !== initialLength
-  }
-
-  // Stats operations
-  public async getStats(): Promise<SystemStat> {
-    await this.initialize()
-    return { ...this.stats }
-  }
-
-  public async updateStats(updates: Partial<SystemStat>): Promise<SystemStat> {
-    await this.initialize()
-    this.stats = {
-      ...this.stats,
-      ...updates,
-      lastUpdated: new Date().toISOString(),
-    }
-    return { ...this.stats }
-  }
-
-  // Activities operations
-  public async getActivities(limit = 10): Promise<Activity[]> {
-    await this.initialize()
-    return [...this.activities].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()).slice(0, limit)
-  }
-
-  public async addActivity(activity: Omit<Activity, "id">): Promise<Activity> {
-    await this.initialize()
-    const newActivity: Activity = {
-      ...activity,
-      id: uuidv4(),
-    }
-    this.activities.push(newActivity)
-
-    // Update stats
-    if (activity.type === "warning" || activity.type === "error") {
-      this.stats.securityAlerts += 1
-      this.stats.lastUpdated = new Date().toISOString()
-    }
-
-    return newActivity
-  }
-
-  // Login attempts operations
-  public async getLoginAttempts(limit = 10): Promise<LoginAttempt[]> {
-    await this.initialize()
-    return [...this.loginAttempts]
-      .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
-      .slice(0, limit)
-  }
-
-  public async addLoginAttempt(attempt: Omit<LoginAttempt, "id">): Promise<LoginAttempt> {
-    await this.initialize()
-    const newAttempt: LoginAttempt = {
-      ...attempt,
-      id: uuidv4(),
-    }
-    this.loginAttempts.push(newAttempt)
-
-    // Add activity
-    await this.addActivity({
-      action: `登錄${attempt.status === "success" ? "成功" : "失敗"} (${attempt.ip})`,
-      time: attempt.time,
-      type: attempt.status === "success" ? "success" : "warning",
-      details: `IP: ${attempt.ip}, 位置: ${attempt.location}`,
-    })
-
-    return newAttempt
-  }
+  // 標記為已初始化
+  global.__memoryDb.initialized = true
+  console.log("✅ Memory database initialization complete!")
 }
 
-// Export singleton instance
-const db = MemoryDatabase.getInstance()
-
-// Export functions that use the singleton
-export async function initializeDatabase() {
-  await db.initialize()
-}
-
+// 文章 CRUD 操作
 export async function getArticles(): Promise<Article[]> {
-  return db.getArticles()
+  console.log("📖 Getting all articles...")
+  await initializeDatabase()
+  console.log(`✅ Retrieved ${global.__memoryDb.articles.length} articles`)
+  return [...global.__memoryDb.articles]
 }
 
 export async function getArticleById(id: string): Promise<Article | null> {
-  return db.getArticleById(id)
+  console.log(`📖 Getting article by ID: ${id}`)
+  await initializeDatabase()
+  const article = global.__memoryDb.articles.find((a) => a.id === id) || null
+  console.log(article ? "✅ Article found" : "❌ Article not found")
+  return article ? { ...article } : null
 }
 
-export async function createArticle(article: Omit<Article, "id">): Promise<Article> {
-  return db.createArticle(article)
+export async function createArticle(articleData: Omit<Article, "id">): Promise<Article> {
+  console.log("📝 Creating new article:", articleData.title)
+  await initializeDatabase()
+
+  const newArticle: Article = {
+    ...articleData,
+    id: uuidv4(),
+  }
+
+  global.__memoryDb.articles.push(newArticle)
+
+  // 更新統計數據
+  global.__memoryDb.stats.totalArticles = global.__memoryDb.articles.length
+  global.__memoryDb.stats.lastUpdated = new Date().toISOString()
+
+  // 記錄活動
+  await addActivity({
+    action: `新文章已創建: ${newArticle.title}`,
+    time: new Date().toISOString(),
+    type: "success",
+  })
+
+  console.log("✅ Article created successfully:", newArticle.id)
+  return { ...newArticle }
 }
 
 export async function updateArticle(id: string, updates: Partial<Article>): Promise<Article | null> {
-  return db.updateArticle(id, updates)
+  console.log(`📝 Updating article: ${id}`)
+  await initializeDatabase()
+
+  const index = global.__memoryDb.articles.findIndex((a) => a.id === id)
+
+  if (index === -1) {
+    console.log("❌ Article not found for update")
+    return null
+  }
+
+  global.__memoryDb.articles[index] = { ...global.__memoryDb.articles[index], ...updates }
+
+  // 記錄活動
+  await addActivity({
+    action: `文章已更新: ${global.__memoryDb.articles[index].title}`,
+    time: new Date().toISOString(),
+    type: "info",
+  })
+
+  console.log("✅ Article updated successfully")
+  return { ...global.__memoryDb.articles[index] }
 }
 
 export async function deleteArticle(id: string): Promise<boolean> {
-  return db.deleteArticle(id)
+  console.log(`🗑️ Deleting article: ${id}`)
+  await initializeDatabase()
+
+  const articleToDelete = global.__memoryDb.articles.find((a) => a.id === id)
+
+  if (!articleToDelete) {
+    console.log("❌ Article not found for deletion")
+    return false
+  }
+
+  global.__memoryDb.articles = global.__memoryDb.articles.filter((a) => a.id !== id)
+
+  // 更新統計數據
+  global.__memoryDb.stats.totalArticles = global.__memoryDb.articles.length
+  global.__memoryDb.stats.lastUpdated = new Date().toISOString()
+
+  // 記錄活動
+  await addActivity({
+    action: `文章已刪除: ${articleToDelete.title}`,
+    time: new Date().toISOString(),
+    type: "warning",
+  })
+
+  console.log("✅ Article deleted successfully")
+  return true
 }
 
+// 項目 CRUD 操作
 export async function getProjects(): Promise<Project[]> {
-  return db.getProjects()
+  console.log("📖 Getting all projects...")
+  await initializeDatabase()
+  console.log(`✅ Retrieved ${global.__memoryDb.projects.length} projects`)
+  return [...global.__memoryDb.projects]
 }
 
 export async function getProjectById(id: string): Promise<Project | null> {
-  return db.getProjectById(id)
+  console.log(`📖 Getting project by ID: ${id}`)
+  await initializeDatabase()
+  const project = global.__memoryDb.projects.find((p) => p.id === id) || null
+  console.log(project ? "✅ Project found" : "❌ Project not found")
+  return project ? { ...project } : null
 }
 
-export async function createProject(project: Omit<Project, "id">): Promise<Project> {
-  return db.createProject(project)
+export async function createProject(projectData: Omit<Project, "id">): Promise<Project> {
+  console.log("🚀 Creating new project:", projectData.name)
+  await initializeDatabase()
+
+  const newProject: Project = {
+    ...projectData,
+    id: uuidv4(),
+  }
+
+  global.__memoryDb.projects.push(newProject)
+
+  // 更新統計數據
+  global.__memoryDb.stats.totalProjects = global.__memoryDb.projects.length
+  global.__memoryDb.stats.lastUpdated = new Date().toISOString()
+
+  // 記錄活動
+  await addActivity({
+    action: `新項目已創建: ${newProject.name}`,
+    time: new Date().toISOString(),
+    type: "success",
+  })
+
+  console.log("✅ Project created successfully:", newProject.id)
+  return { ...newProject }
 }
 
 export async function updateProject(id: string, updates: Partial<Project>): Promise<Project | null> {
-  return db.updateProject(id, updates)
+  console.log(`🚀 Updating project: ${id}`)
+  await initializeDatabase()
+
+  const index = global.__memoryDb.projects.findIndex((p) => p.id === id)
+
+  if (index === -1) {
+    console.log("❌ Project not found for update")
+    return null
+  }
+
+  global.__memoryDb.projects[index] = { ...global.__memoryDb.projects[index], ...updates }
+
+  // 記錄活動
+  await addActivity({
+    action: `項目已更新: ${global.__memoryDb.projects[index].name}`,
+    time: new Date().toISOString(),
+    type: "info",
+  })
+
+  console.log("✅ Project updated successfully")
+  return { ...global.__memoryDb.projects[index] }
 }
 
 export async function deleteProject(id: string): Promise<boolean> {
-  return db.deleteProject(id)
+  console.log(`🗑️ Deleting project: ${id}`)
+  await initializeDatabase()
+
+  const projectToDelete = global.__memoryDb.projects.find((p) => p.id === id)
+
+  if (!projectToDelete) {
+    console.log("❌ Project not found for deletion")
+    return false
+  }
+
+  global.__memoryDb.projects = global.__memoryDb.projects.filter((p) => p.id !== id)
+
+  // 更新統計數據
+  global.__memoryDb.stats.totalProjects = global.__memoryDb.projects.length
+  global.__memoryDb.stats.lastUpdated = new Date().toISOString()
+
+  // 記錄活動
+  await addActivity({
+    action: `項目已刪除: ${projectToDelete.name}`,
+    time: new Date().toISOString(),
+    type: "warning",
+  })
+
+  console.log("✅ Project deleted successfully")
+  return true
 }
 
+// 統計數據操作
 export async function getStats(): Promise<SystemStat> {
-  return db.getStats()
+  console.log("📊 Getting system stats...")
+  await initializeDatabase()
+  console.log("✅ Stats retrieved")
+  return { ...global.__memoryDb.stats }
 }
 
 export async function updateStats(updates: Partial<SystemStat>): Promise<SystemStat> {
-  return db.updateStats(updates)
+  console.log("📊 Updating system stats...")
+  await initializeDatabase()
+
+  global.__memoryDb.stats = {
+    ...global.__memoryDb.stats,
+    ...updates,
+    lastUpdated: new Date().toISOString(),
+  }
+
+  console.log("✅ Stats updated successfully")
+  return { ...global.__memoryDb.stats }
 }
 
+// 活動操作
 export async function getActivities(limit = 10): Promise<Activity[]> {
-  return db.getActivities(limit)
+  console.log(`📋 Getting activities (limit: ${limit})...`)
+  await initializeDatabase()
+
+  const sortedActivities = [...global.__memoryDb.activities]
+    .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+    .slice(0, limit)
+
+  console.log(`✅ Retrieved ${sortedActivities.length} activities`)
+  return sortedActivities
 }
 
-export async function addActivity(activity: Omit<Activity, "id">): Promise<Activity> {
-  return db.addActivity(activity)
+export async function addActivity(activityData: Omit<Activity, "id">): Promise<Activity> {
+  console.log("📋 Adding new activity:", activityData.action)
+  await initializeDatabase()
+
+  const newActivity: Activity = {
+    ...activityData,
+    id: uuidv4(),
+  }
+
+  global.__memoryDb.activities.push(newActivity)
+
+  console.log("✅ Activity added successfully")
+  return { ...newActivity }
 }
 
+// 登錄嘗試操作
 export async function getLoginAttempts(limit = 10): Promise<LoginAttempt[]> {
-  return db.getLoginAttempts(limit)
+  console.log(`🔐 Getting login attempts (limit: ${limit})...`)
+  await initializeDatabase()
+
+  const sortedAttempts = [...global.__memoryDb.loginAttempts]
+    .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime())
+    .slice(0, limit)
+
+  console.log(`✅ Retrieved ${sortedAttempts.length} login attempts`)
+  return sortedAttempts
 }
 
-export async function addLoginAttempt(attempt: Omit<LoginAttempt, "id">): Promise<LoginAttempt> {
-  return db.addLoginAttempt(attempt)
+export async function addLoginAttempt(attemptData: Omit<LoginAttempt, "id">): Promise<LoginAttempt> {
+  console.log("🔐 Adding new login attempt:", attemptData.ip)
+  await initializeDatabase()
+
+  const newAttempt: LoginAttempt = {
+    ...attemptData,
+    id: uuidv4(),
+  }
+
+  global.__memoryDb.loginAttempts.push(newAttempt)
+
+  // 記錄活動
+  await addActivity({
+    action: `登錄${attemptData.status === "success" ? "成功" : "失敗"} (${attemptData.ip})`,
+    time: attemptData.time,
+    type: attemptData.status === "success" ? "success" : "warning",
+    details: `IP: ${attemptData.ip}, 位置: ${attemptData.location}`,
+  })
+
+  console.log("✅ Login attempt added successfully")
+  return { ...newAttempt }
+}
+
+// 檢查數據庫狀態
+export async function checkDatabaseStatus(): Promise<{
+  initialized: boolean
+  articleCount: number
+  projectCount: number
+  activityCount: number
+}> {
+  await initializeDatabase()
+  return {
+    initialized: global.__memoryDb.initialized,
+    articleCount: global.__memoryDb.articles.length,
+    projectCount: global.__memoryDb.projects.length,
+    activityCount: global.__memoryDb.activities.length,
+  }
 }
