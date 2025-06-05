@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server"
-import { getStats, updateStats, initializeDataFiles } from "@/lib/db-service"
+import { getStats, updateStats, initializeDatabase } from "@/lib/memory-db-service"
 
 export async function GET() {
   try {
     console.log("📊 GET /api/admin/stats - Fetching stats...")
 
-    // Ensure data files are initialized
-    await initializeDataFiles()
+    // Ensure database is initialized
+    await initializeDatabase()
 
     const stats = await getStats()
     console.log("✅ Stats fetched successfully:", stats)
@@ -31,8 +31,8 @@ export async function PUT(request: Request) {
     const updates = await request.json()
     console.log("📝 Stats updates:", updates)
 
-    // Ensure data files are initialized
-    await initializeDataFiles()
+    // Ensure database is initialized
+    await initializeDatabase()
 
     const updatedStats = await updateStats(updates)
     console.log("✅ Stats updated successfully:", updatedStats)

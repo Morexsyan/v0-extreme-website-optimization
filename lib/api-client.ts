@@ -1,63 +1,53 @@
-// Real API client for making HTTP requests
-class ApiError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-    public response?: any,
-  ) {
+// API client for making requests to the backend
+export class ApiError extends Error {
+  status: number
+
+  constructor(message: string, status: number) {
     super(message)
     this.name = "ApiError"
+    this.status = status
   }
 }
 
 class ApiClient {
   private baseUrl: string
 
-  constructor(baseUrl = "") {
-    this.baseUrl = baseUrl
+  constructor() {
+    this.baseUrl = ""
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`
-
-    console.log(`🌐 API Request: ${options.method || "GET"} ${url}`)
-
-    const config: RequestInit = {
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-      ...options,
-    }
-
     try {
-      const response = await fetch(url, config)
+      console.log(`🌐 API Request: ${options.method || "GET"} ${endpoint}`)
 
-      console.log(`📡 API Response: ${response.status} ${response.statusText}`)
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          ...options.headers,
+        },
+      })
+
+      console.log(`📡 API Response: ${response.status} ${response.ok ? "✅" : "❌"}`)
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        console.error(`❌ API Error:`, errorData)
-        throw new ApiError(
-          errorData.error || `HTTP ${response.status}: ${response.statusText}`,
-          response.status,
-          errorData,
-        )
+        const errorData = await response.json().catch(() => ({ message: "Unknown error" }))
+        console.error("❌ API Error:", errorData)
+        throw new ApiError(errorData.error || errorData.message || "API request failed", response.status)
       }
 
       const data = await response.json()
-      console.log(`✅ API Success:`, data)
-      return data
+      return data as T
     } catch (error) {
       if (error instanceof ApiError) {
         throw error
       }
-      console.error(`🔥 Network Error:`, error)
-      throw new ApiError("Network error occurred", 0, error)
+      console.error("❌ API Request failed:", error)
+      throw new ApiError(error instanceof Error ? error.message : "Unknown error", 500)
     }
   }
 
-  // Dashboard API
+  // Dashboard
   async getDashboardStats() {
     return this.request("/api/admin/stats")
   }
@@ -69,7 +59,7 @@ class ApiClient {
     })
   }
 
-  // Articles API
+  // Articles
   async getArticles() {
     return this.request("/api/admin/articles")
   }
@@ -98,7 +88,7 @@ class ApiClient {
     })
   }
 
-  // Projects API
+  // Projects
   async getProjects() {
     return this.request("/api/admin/projects")
   }
@@ -127,16 +117,40 @@ class ApiClient {
     })
   }
 
-  // Activities API
-  async getActivities() {
-    return this.request("/api/admin/activities")
+  // Activities
+  async getActivities(limit = 10) {
+    return this.request(`/api/admin/activities?limit=${limit}`)
   }
 
-  // Login attempts API
-  async getLoginAttempts() {
-    return this.request("/api/admin/login-attempts")
+  async addActivity(activity: any) {
+    return this.request("/api/admin/activities", {
+      method: "POST",
+      body: JSON.stringify(activity),
+    })
+  }
+
+  // Login attempts
+  async getLoginAttempts(limit = 10) {
+    return this.request(`/api/admin/login-attempts?limit=${limit}`)
+  }
+
+  async addLoginAttempt(attempt: any) {
+    return this.request("/api/admin/login-attempts", {
+      method: "POST",
+      body: JSON.stringify(attempt),
+    })
+  }
+
+  // Database initialization
+  async initializeDatabase() {
+    return this.request("/api/admin/init", {
+      method: "POST",
+    })
+  }
+
+  async checkDatabaseStatus() {
+    return this.request("/api/admin/init")
   }
 }
 
 export const apiClient = new ApiClient()
-export { ApiError }

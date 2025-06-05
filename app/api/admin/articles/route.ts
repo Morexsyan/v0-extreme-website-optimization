@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server"
-import { getArticles, createArticle, initializeDataFiles } from "@/lib/db-service"
+import { getArticles, createArticle, initializeDatabase } from "@/lib/memory-db-service"
 
 export async function GET() {
   try {
     console.log("📝 GET /api/admin/articles - Fetching articles...")
 
-    // Ensure data files are initialized
-    await initializeDataFiles()
+    // Ensure database is initialized
+    await initializeDatabase()
 
     const articles = await getArticles()
     console.log(`✅ Fetched ${articles.length} articles successfully`)
@@ -31,8 +31,8 @@ export async function POST(request: Request) {
     const articleData = await request.json()
     console.log("📄 Article data:", articleData)
 
-    // Ensure data files are initialized
-    await initializeDataFiles()
+    // Ensure database is initialized
+    await initializeDatabase()
 
     // Add required fields
     const newArticleData = {

@@ -1,33 +1,24 @@
 import { NextResponse } from "next/server"
-import { initializeDataFiles } from "@/lib/db-service"
-import fs from "fs/promises"
-import path from "path"
+import { initializeDatabase } from "@/lib/memory-db-service"
 
 export async function POST() {
   try {
-    console.log("🔄 POST /api/admin/init - Initializing data files...")
+    console.log("🔄 POST /api/admin/init - Initializing database...")
 
-    // Initialize data files
-    await initializeDataFiles()
+    // Initialize database
+    await initializeDatabase()
 
-    // Check if files exist
-    const dataDir = path.join(process.cwd(), "data")
-    const files = await fs.readdir(dataDir).catch(() => [])
-
-    console.log("✅ Data initialization completed")
-    console.log("📁 Data files:", files)
+    console.log("✅ Database initialization completed")
 
     return NextResponse.json({
       success: true,
-      message: "Data files initialized successfully",
-      files: files,
-      dataDir: dataDir,
+      message: "Database initialized successfully",
     })
   } catch (error) {
-    console.error("❌ Error initializing data:", error)
+    console.error("❌ Error initializing database:", error)
     return NextResponse.json(
       {
-        error: "Failed to initialize data",
+        error: "Failed to initialize database",
         details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 },
@@ -37,45 +28,22 @@ export async function POST() {
 
 export async function GET() {
   try {
-    console.log("🔍 GET /api/admin/init - Checking data files...")
+    console.log("🔍 GET /api/admin/init - Checking database status...")
 
-    const dataDir = path.join(process.cwd(), "data")
+    // Initialize database
+    await initializeDatabase()
 
-    try {
-      const files = await fs.readdir(dataDir)
-      const fileStats = await Promise.all(
-        files.map(async (file) => {
-          const filePath = path.join(dataDir, file)
-          const stats = await fs.stat(filePath)
-          return {
-            name: file,
-            size: stats.size,
-            modified: stats.mtime.toISOString(),
-          }
-        }),
-      )
+    console.log("✅ Database check completed")
 
-      console.log("✅ Data files check completed:", fileStats)
-
-      return NextResponse.json({
-        success: true,
-        dataDir: dataDir,
-        files: fileStats,
-      })
-    } catch (dirError) {
-      console.log("📁 Data directory does not exist yet")
-      return NextResponse.json({
-        success: false,
-        message: "Data directory does not exist",
-        dataDir: dataDir,
-        files: [],
-      })
-    }
+    return NextResponse.json({
+      success: true,
+      message: "Database is initialized",
+    })
   } catch (error) {
-    console.error("❌ Error checking data files:", error)
+    console.error("❌ Error checking database:", error)
     return NextResponse.json(
       {
-        error: "Failed to check data files",
+        error: "Failed to check database",
         details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 },

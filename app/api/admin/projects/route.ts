@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server"
-import { getProjects, createProject, initializeDataFiles } from "@/lib/db-service"
+import { getProjects, createProject, initializeDatabase } from "@/lib/memory-db-service"
 
 export async function GET() {
   try {
     console.log("🚀 GET /api/admin/projects - Fetching projects...")
 
-    // Ensure data files are initialized
-    await initializeDataFiles()
+    // Ensure database is initialized
+    await initializeDatabase()
 
     const projects = await getProjects()
     console.log(`✅ Fetched ${projects.length} projects successfully`)
@@ -31,8 +31,8 @@ export async function POST(request: Request) {
     const projectData = await request.json()
     console.log("📋 Project data:", projectData)
 
-    // Ensure data files are initialized
-    await initializeDataFiles()
+    // Ensure database is initialized
+    await initializeDatabase()
 
     const newProject = await createProject(projectData)
     console.log("✅ Project created successfully:", newProject)

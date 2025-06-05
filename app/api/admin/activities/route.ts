@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getActivities, addActivity, initializeDataFiles } from "@/lib/db-service"
+import { getActivities, addActivity, initializeDatabase } from "@/lib/memory-db-service"
 
 export async function GET(request: Request) {
   try {
@@ -8,8 +8,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const limit = Number.parseInt(searchParams.get("limit") || "10", 10)
 
-    // Ensure data files are initialized
-    await initializeDataFiles()
+    // Ensure database is initialized
+    await initializeDatabase()
 
     const activities = await getActivities(limit)
     console.log(`✅ Fetched ${activities.length} activities successfully`)
@@ -34,8 +34,8 @@ export async function POST(request: Request) {
     const activityData = await request.json()
     console.log("📋 Activity data:", activityData)
 
-    // Ensure data files are initialized
-    await initializeDataFiles()
+    // Ensure database is initialized
+    await initializeDatabase()
 
     const newActivity = await addActivity({
       ...activityData,
