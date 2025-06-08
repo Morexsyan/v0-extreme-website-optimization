@@ -24,7 +24,7 @@ function QuantumParticles() {
 
   useEffect(() => {
     // 根據設備類型調整粒子數量
-    setParticleCount(isMobile ? 100 : 300)
+    setParticleCount(isMobile ? 200 : 500)
   }, [isMobile])
 
   useFrame((state) => {
@@ -37,7 +37,7 @@ function QuantumParticles() {
     const dummy = new THREE.Object3D()
 
     // 減少循環次數，只更新一部分粒子
-    const updateCount = Math.min(particleCount, 150)
+    const updateCount = Math.min(particleCount, 200)
     for (let i = 0; i < updateCount; i++) {
       const t = i / particleCount
       const radius = 8 + Math.sin(t * Math.PI * 6) * 1.5
@@ -62,18 +62,18 @@ function QuantumParticles() {
   )
 }
 
-// 簡化的 3D 文字組件 - 不依賴外部字體文件
 function FloatingText({ text, position }: { text: string; position: [number, number, number] }) {
+  // 直接使用降級方案，避免字體加載錯誤
   return (
     <Float speed={1.5} rotationIntensity={0.3} floatIntensity={0.3}>
       <mesh position={position}>
-        <boxGeometry args={[text.length * 0.8, 1.2, 0.3]} />
-        <meshStandardMaterial color="#00ff88" emissive="#00ff88" emissiveIntensity={0.4} transparent opacity={0.8} />
+        <boxGeometry args={[text.length * 0.3, 0.4, 0.1]} />
+        <meshStandardMaterial color="#00ff88" emissive="#00ff88" emissiveIntensity={0.2} transparent opacity={0.8} />
       </mesh>
-      {/* 添加發光效果 */}
-      <mesh position={position}>
-        <boxGeometry args={[text.length * 0.9, 1.3, 0.4]} />
-        <meshStandardMaterial color="#00ff88" emissive="#00ff88" emissiveIntensity={0.2} transparent opacity={0.3} />
+      {/* 添加文字標籤作為備用 */}
+      <mesh position={[position[0], position[1] - 0.3, position[2]]}>
+        <planeGeometry args={[text.length * 0.2, 0.2]} />
+        <meshBasicMaterial transparent opacity={0} />
       </mesh>
     </Float>
   )
@@ -82,24 +82,24 @@ function FloatingText({ text, position }: { text: string; position: [number, num
 // 神經網絡可視化組件 - 簡化版本
 function NeuralNetwork() {
   const groupRef = useRef<THREE.Group>(null)
-  const [nodeCount, setNodeCount] = useState(20)
+  const [nodeCount, setNodeCount] = useState(30)
   const isMobile = useMobile()
 
   useEffect(() => {
     // 根據設備類型調整節點數量
-    setNodeCount(isMobile ? 10 : 20)
+    setNodeCount(isMobile ? 15 : 30)
   }, [isMobile])
 
   useFrame((state) => {
     if (groupRef.current) {
       // 降低旋轉速度，減少 GPU 負載
-      groupRef.current.rotation.y = state.clock.getElapsedTime() * 0.01
+      groupRef.current.rotation.y = state.clock.getElapsedTime() * 0.02
     }
   })
 
-  const nodes = Array.from({ length: Math.min(nodeCount, 15) }, (_, i) => ({
+  const nodes = Array.from({ length: Math.min(nodeCount, 20) }, (_, i) => ({
     id: i,
-    position: [(Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12] as [
+    position: [(Math.random() - 0.5) * 15, (Math.random() - 0.5) * 15, (Math.random() - 0.5) * 15] as [
       number,
       number,
       number,
@@ -110,26 +110,23 @@ function NeuralNetwork() {
     <group ref={groupRef}>
       {nodes.map((node) => (
         <mesh key={node.id} position={node.position}>
-          <sphereGeometry args={[0.06]} />
+          <sphereGeometry args={[0.08]} />
           <meshStandardMaterial color="#00ff88" emissive="#00ff88" emissiveIntensity={0.3} />
         </mesh>
       ))}
-      <Sparkles count={30} scale={12} size={1} speed={0.2} color="#00ff88" />
+      <Sparkles count={50} scale={15} size={1.5} speed={0.3} color="#00ff88" />
     </group>
   )
 }
 
-// WebGL 錯誤處理組件 - 改進版本
+// WebGL 錯誤處理組件
 function WebGLErrorBoundary({ children }: { children: ReactNode }) {
   const [hasError, setHasError] = useState(false)
   const [isWebGLSupported, setIsWebGLSupported] = useState(true)
   const [canvasKey, setCanvasKey] = useState(0)
-  const [contextLostCount, setContextLostCount] = useState(0)
 
   useEffect(() => {
-    // 只在客戶端檢查 WebGL 支持
-    if (typeof window === "undefined") return
-
+    // 檢查 WebGL 支持
     const checkWebGLSupport = () => {
       try {
         const testCanvas = document.createElement("canvas")
@@ -137,9 +134,9 @@ function WebGLErrorBoundary({ children }: { children: ReactNode }) {
         testCanvas.height = 1
 
         const gl =
-          testCanvas.getContext("webgl2", { failIfMajorPerformanceCaveat: false }) ||
-          testCanvas.getContext("webgl", { failIfMajorPerformanceCaveat: false }) ||
-          testCanvas.getContext("experimental-webgl", { failIfMajorPerformanceCaveat: false })
+          testCanvas.getContext("webgl2") ||
+          testCanvas.getContext("webgl") ||
+          testCanvas.getContext("experimental-webgl")
 
         if (!gl) {
           console.warn("WebGL not supported")
@@ -147,12 +144,7 @@ function WebGLErrorBoundary({ children }: { children: ReactNode }) {
           return false
         }
 
-        // 檢查基本 WebGL 功能
-        const renderer = gl.getParameter(gl.RENDERER)
-        const vendor = gl.getParameter(gl.VENDOR)
-        console.log("WebGL Renderer:", renderer)
-        console.log("WebGL Vendor:", vendor)
-
+        // 清理測試 canvas
         testCanvas.remove()
         return true
       } catch (e) {
@@ -165,15 +157,14 @@ function WebGLErrorBoundary({ children }: { children: ReactNode }) {
     const isSupported = checkWebGLSupport()
 
     if (isSupported) {
+      // 監聽頁面可見性變化
       const handleVisibilityChange = () => {
-        if (document.hidden) {
-          console.log("Page hidden")
-        } else {
-          console.log("Page visible")
-          // 如果上下文丟失次數過多，不要自動重新創建
-          if (contextLostCount < 3) {
+        if (!document.hidden) {
+          // 頁面重新可見時，延遲重新創建 Canvas
+          setTimeout(() => {
             setCanvasKey((prev) => prev + 1)
-          }
+            setHasError(false)
+          }, 1000)
         }
       }
 
@@ -183,24 +174,17 @@ function WebGLErrorBoundary({ children }: { children: ReactNode }) {
         document.removeEventListener("visibilitychange", handleVisibilityChange)
       }
     }
-  }, [contextLostCount])
+  }, [])
 
   const handleContextLost = () => {
     console.warn("WebGL context lost, attempting recovery...")
     setHasError(true)
-    setContextLostCount((prev) => prev + 1)
 
-    // 如果上下文丟失次數過多，停止嘗試恢復
-    if (contextLostCount >= 3) {
-      console.warn("Too many context losses, disabling WebGL")
-      setIsWebGLSupported(false)
-      return
-    }
-
+    // 延遲恢復，給瀏覽器時間清理
     setTimeout(() => {
       setCanvasKey((prev) => prev + 1)
       setHasError(false)
-    }, 2000)
+    }, 3000)
   }
 
   const handleContextRestored = () => {
@@ -208,11 +192,11 @@ function WebGLErrorBoundary({ children }: { children: ReactNode }) {
     setHasError(false)
   }
 
-  if (!isWebGLSupported || hasError || contextLostCount >= 3) {
+  if (!isWebGLSupported || hasError) {
     return (
       <div className="fixed inset-0 z-0 bg-gradient-to-br from-black via-gray-900 to-black">
-        {/* CSS 動畫降級方案 */}
-        {Array.from({ length: 15 }).map((_, i) => (
+        {/* 降級的 CSS 動畫背景 */}
+        {Array.from({ length: 20 }).map((_, i) => (
           <motion.div
             key={i}
             className="absolute w-1 h-1 bg-green-400 rounded-full"
@@ -231,15 +215,6 @@ function WebGLErrorBoundary({ children }: { children: ReactNode }) {
             }}
           />
         ))}
-        {contextLostCount >= 3 && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center text-green-400 font-mono">
-              <div className="text-4xl mb-4">⚠️</div>
-              <div>WebGL 已禁用以提高穩定性</div>
-              <div className="text-sm mt-2">使用 CSS 動畫降級方案</div>
-            </div>
-          </div>
-        )}
       </div>
     )
   }
@@ -264,37 +239,22 @@ function Scene3D() {
   useEffect(() => {
     setIsMounted(true)
 
+    // 檢測設備性能
     const checkPerformance = () => {
       if (typeof window === "undefined") return false
 
       const isLowMemory = (navigator as any).deviceMemory && (navigator as any).deviceMemory < 4
       const isSlowCPU = navigator.hardwareConcurrency && navigator.hardwareConcurrency < 4
-      const isSlowGPU = (() => {
-        try {
-          const canvas = document.createElement("canvas")
-          const gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl")
-          if (!gl) return true
 
-          const debugInfo = gl.getExtension("WEBGL_debug_renderer_info")
-          if (debugInfo) {
-            const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL)
-            // 檢查是否為軟件渲染或低端 GPU
-            return renderer.includes("Software") || renderer.includes("Intel")
-          }
-          return false
-        } catch {
-          return true
-        }
-      })()
-
-      return isMobile || isLowMemory || isSlowCPU || isSlowGPU
+      return isMobile || isLowMemory || isSlowCPU
     }
 
     setIsLowPerformance(checkPerformance())
   }, [isMobile])
 
+  // 如果不在客戶端，返回一個簡單的佔位符
   if (!isMounted) {
-    return <div className="fixed inset-0 z-0 bg-gradient-to-br from-black via-gray-900 to-black"></div>
+    return <div className="fixed inset-0 z-0 bg-gradient-to-br from-black via-gray-900 to-black">{/* 靜態背景 */}</div>
   }
 
   return (
@@ -305,44 +265,56 @@ function Scene3D() {
         gl={{
           antialias: !isLowPerformance,
           alpha: true,
-          powerPreference: isLowPerformance ? "low-power" : "high-performance",
+          powerPreference: "high-performance",
           failIfMajorPerformanceCaveat: false,
-          preserveDrawingBuffer: false,
-          stencil: false,
-          depth: true,
         }}
-        dpr={isLowPerformance ? 1 : Math.min(typeof window !== "undefined" ? window.devicePixelRatio : 1, 1.5)}
+        dpr={isLowPerformance ? 1 : typeof window !== "undefined" ? Math.min(window.devicePixelRatio, 2) : 1}
         performance={{ min: 0.5 }}
-        onCreated={({ gl, scene, camera }) => {
-          // WebGL 上下文丟失處理
+        onCreated={({ gl }) => {
+          // 設置 WebGL 上下文丟失處理
           const handleContextLost = (event: Event) => {
             event.preventDefault()
             console.warn("WebGL context lost")
+
+            // 清理資源
+            try {
+              gl.dispose()
+            } catch (e) {
+              console.warn("Error disposing WebGL context:", e)
+            }
           }
 
           const handleContextRestored = () => {
-            console.log("WebGL context restored")
+            console.log("WebGL context restored successfully")
           }
 
-          gl.domElement.addEventListener("webglcontextlost", handleContextLost, false)
-          gl.domElement.addEventListener("webglcontextrestored", handleContextRestored, false)
+          // 添加事件監聽器
+          const canvas = gl.domElement
+          canvas.addEventListener("webglcontextlost", handleContextLost, false)
+          canvas.addEventListener("webglcontextrestored", handleContextRestored, false)
 
-          // 優化設置
-          if (typeof window !== "undefined") {
-            gl.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+          // 設置更保守的 WebGL 參數
+          try {
+            if (typeof window !== "undefined") {
+              gl.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+            }
+            gl.setClearColor(0x000000, 1)
+          } catch (e) {
+            console.warn("Error setting WebGL parameters:", e)
           }
-          gl.setClearColor(0x000000, 1)
 
-          // 設置更保守的渲染參數
-          gl.shadowMap.enabled = false
-          gl.physicallyCorrectLights = false
+          // 清理函數
+          return () => {
+            canvas.removeEventListener("webglcontextlost", handleContextLost)
+            canvas.removeEventListener("webglcontextrestored", handleContextRestored)
+          }
         }}
       >
         <Suspense fallback={null}>
           <Environment preset="night" />
-          <ambientLight intensity={0.2} />
-          <pointLight position={[8, 8, 8]} intensity={0.6} color="#00ff88" />
-          <pointLight position={[-8, -8, -8]} intensity={0.2} color="#0088ff" />
+          <ambientLight intensity={0.1} />
+          <pointLight position={[8, 8, 8]} intensity={0.8} color="#00ff88" />
+          <pointLight position={[-8, -8, -8]} intensity={0.3} color="#0088ff" />
 
           {!isLowPerformance && <QuantumParticles />}
           {!isLowPerformance && <NeuralNetwork />}
@@ -354,11 +326,9 @@ function Scene3D() {
             enableZoom={false}
             enablePan={false}
             autoRotate
-            autoRotateSpeed={0.2}
+            autoRotateSpeed={0.3}
             enableDamping
             dampingFactor={0.05}
-            maxPolarAngle={Math.PI}
-            minPolarAngle={0}
           />
         </Suspense>
       </Canvas>
@@ -428,7 +398,7 @@ function AdvancedLoader({ onComplete }: { onComplete: () => void }) {
   )
 }
 
-// 導航組件 - 修復路由問題
+// 導航組件 - 修復手機端顯示問題
 function Navigation() {
   const [activeSection, setActiveSection] = useState("home")
   const router = useRouter()
@@ -451,6 +421,7 @@ function Navigation() {
   const handleNavigation = (section: any) => {
     setActiveSection(section.id)
 
+    // 添加點擊反饋效果
     if (typeof document !== "undefined") {
       const ripple = document.createElement("div")
       ripple.className = "fixed w-4 h-4 bg-green-400 rounded-full pointer-events-none z-50 animate-ping"
@@ -460,13 +431,13 @@ function Navigation() {
       document.body.appendChild(ripple)
 
       setTimeout(() => {
-        if (document.body.contains(ripple)) {
-          document.body.removeChild(ripple)
-        }
+        document.body.removeChild(ripple)
       }, 1000)
     }
 
+    // 路由導航
     if (section.route.startsWith("#")) {
+      // 如果是錨點，滾動到對應區域
       if (typeof document !== "undefined") {
         const element = document.querySelector(section.route)
         if (element) {
@@ -474,10 +445,12 @@ function Navigation() {
         }
       }
     } else if (section.route === "/") {
+      // 如果是首頁，滾動到頂部
       if (typeof window !== "undefined") {
         window.scrollTo({ top: 0, behavior: "smooth" })
       }
     } else {
+      // 導航到其他頁面
       router.push(section.route)
     }
   }
@@ -493,12 +466,12 @@ function Navigation() {
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.8, delay: 2 }}
     >
-      <div className="bg-black/90 backdrop-blur-xl border border-green-400/30 rounded-full px-4 py-2 md:px-6 md:py-3">
-        <div className="flex space-x-2 md:space-x-6">
+      <div className="bg-black/90 backdrop-blur-xl border border-green-400/30 rounded-full px-2 py-2 md:px-6 md:py-3">
+        <div className="flex space-x-1 md:space-x-6">
           {sections.map((section) => (
             <motion.button
               key={section.id}
-              className={`relative px-3 py-2 md:px-4 md:py-2 rounded-full text-xs md:text-sm transition-all duration-300 ${
+              className={`relative px-2 py-2 md:px-4 md:py-2 rounded-full text-xs md:text-sm transition-all duration-300 whitespace-nowrap ${
                 activeSection === section.id
                   ? "text-black bg-green-400 shadow-lg shadow-green-400/50"
                   : "text-green-400 hover:text-green-300"
@@ -507,8 +480,7 @@ function Navigation() {
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <span className="hidden sm:inline">{section.label}</span>
-              <span className="sm:hidden text-base">{section.icon}</span>
+              {isMobile ? <span className="text-sm">{section.icon}</span> : <span>{section.label}</span>}
               {activeSection === section.id && (
                 <motion.div
                   className="absolute inset-0 bg-green-400 rounded-full -z-10"
@@ -602,6 +574,7 @@ function SkillCard({ skill, index }: { skill: any; index: number }) {
       onHoverEnd={() => setIsHovered(false)}
     >
       <div className="relative bg-black/60 backdrop-blur-xl border border-green-400/30 rounded-xl p-4 md:p-6 h-full overflow-hidden">
+        {/* 背景動畫 */}
         <motion.div
           className="absolute inset-0 bg-gradient-to-br from-green-400/10 to-blue-400/10"
           animate={{
@@ -611,6 +584,7 @@ function SkillCard({ skill, index }: { skill: any; index: number }) {
           transition={{ duration: 0.3 }}
         />
 
+        {/* 邊框發光效果 */}
         <motion.div
           className="absolute inset-0 rounded-xl"
           animate={{
@@ -661,6 +635,7 @@ function ProjectCard({ project, index }: { project: any; index: number }) {
       onHoverEnd={() => setIsHovered(false)}
     >
       <div className="relative bg-black/70 backdrop-blur-xl border border-green-400/30 rounded-xl p-6 md:p-8 h-full overflow-hidden">
+        {/* 粒子效果背景 */}
         <AnimatePresence>
           {isHovered && (
             <motion.div
@@ -669,7 +644,7 @@ function ProjectCard({ project, index }: { project: any; index: number }) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              {Array.from({ length: 10 }).map((_, i) => (
+              {Array.from({ length: 20 }).map((_, i) => (
                 <motion.div
                   key={i}
                   className="absolute w-1 h-1 bg-green-400 rounded-full"
@@ -978,12 +953,8 @@ function QuantumPortfolio() {
 
   useEffect(() => {
     setIsMounted(true)
-
-    // 只在客戶端執行
-    if (typeof window !== "undefined") {
-      const loadingManager = LoadingStateManager.getInstance()
-      setShowLoader(loadingManager.shouldShowLoading())
-    }
+    const loadingManager = LoadingStateManager.getInstance()
+    setShowLoader(loadingManager.shouldShowLoading())
   }, [])
 
   const handleLoadingComplete = () => {

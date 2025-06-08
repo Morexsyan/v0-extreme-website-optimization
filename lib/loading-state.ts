@@ -6,12 +6,7 @@ class LoadingStateManager {
   private constructor() {
     // 檢查是否在客戶端環境
     if (typeof window !== "undefined") {
-      try {
-        this.hasLoaded = localStorage.getItem("portfolio-loaded") === "true"
-      } catch (error) {
-        console.warn("localStorage not available:", error)
-        this.hasLoaded = false
-      }
+      this.hasLoaded = localStorage.getItem("portfolio-loaded") === "true"
     }
   }
 
@@ -29,22 +24,14 @@ class LoadingStateManager {
   public setLoaded(): void {
     this.hasLoaded = true
     if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem("portfolio-loaded", "true")
-      } catch (error) {
-        console.warn("localStorage not available:", error)
-      }
+      localStorage.setItem("portfolio-loaded", "true")
     }
   }
 
   public reset(): void {
     this.hasLoaded = false
     if (typeof window !== "undefined") {
-      try {
-        localStorage.removeItem("portfolio-loaded")
-      } catch (error) {
-        console.warn("localStorage not available:", error)
-      }
+      localStorage.removeItem("portfolio-loaded")
     }
   }
 }
